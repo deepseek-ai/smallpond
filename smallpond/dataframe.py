@@ -5,7 +5,7 @@ import time
 from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union, Iterator
 
 import pandas as pd
 import pyarrow as arrow
@@ -578,6 +578,7 @@ class DataFrame:
         func: Callable[[arrow.Table], arrow.Table],
         *,
         batch_size: int = 122880,
+        streaming: bool = False,
         **kwargs,
     ) -> DataFrame:
         """
@@ -590,18 +591,41 @@ class DataFrame:
             It should take a `arrow.Table` as input and returns a `arrow.Table`.
         batch_size, optional
             The number of rows in each batch. Defaults to 122880.
+        streaming, optional
+            If true, the function takes an iterator of `arrow.Table` as input and yields a streaming of `arrow.Table` as output.
+            i.e. func: Callable[[Iterator[arrow.Table]], Iterator[arrow.Table]]
+            Defaults to false.
         """
 
-        def process_func(_runtime_ctx, tables: List[arrow.Table]) -> arrow.Table:
-            return func(tables[0])
+        if streaming:
 
-        plan = ArrowBatchNode(
-            self.session._ctx,
-            (self.plan,),
-            process_func=process_func,
-            streaming_batch_size=batch_size,
-            **kwargs,
-        )
+            def process_func(
+                _runtime_ctx, readers: List[arrow.RecordBatchReader]
+            ) -> Iterator[arrow.Table]:
+                tables = map(
+                    lambda batch: arrow.Table.from_batches([batch]), readers[0]
+                )
+                return func(tables)
+
+            plan = ArrowStreamNode(
+                self.session._ctx,
+                (self.plan,),
+                process_func=process_func,
+                streaming_batch_size=batch_size,
+                **kwargs,
+            )
+        else:
+
+            def process_func(_runtime_ctx, tables: List[arrow.Table]) -> arrow.Table:
+                return func(tables[0])
+
+            plan = ArrowBatchNode(
+                self.session._ctx,
+                (self.plan,),
+                process_func=process_func,
+                streaming_batch_size=batch_size,
+                **kwargs,
+            )
         return DataFrame(self.session, plan, recompute=self.need_recompute)
 
     def limit(self, limit: int) -> DataFrame:

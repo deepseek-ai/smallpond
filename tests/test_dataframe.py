@@ -1,4 +1,4 @@
-from typing import List
+from typing import Iterator, List
 
 import pandas as pd
 import pyarrow as pa
@@ -82,6 +82,31 @@ def test_map_batches(sp: Session):
         batch_size=350,
     )
     assert df.take_all() == [{"num_rows": 350}, {"num_rows": 350}, {"num_rows": 300}]
+
+
+def test_map_batches_streaming(sp: Session):
+    df = sp.read_parquet("tests/data/mock_urls/*.parquet")
+
+    def batched2(tables: Iterator[pa.Table]) -> Iterator[pa.Table]:
+        # same as itertools.pairwise
+        num_rows = 0
+        count = 0
+        for batch in tables:
+            num_rows += batch.num_rows
+            count += 1
+            if count == 2:
+                yield pa.table({"num_rows": [num_rows]})
+                num_rows = 0
+                count = 0
+        if count > 0:
+            yield pa.table({"num_rows": [num_rows]})
+
+    df = df.map_batches(
+        batched2,
+        batch_size=350,
+        streaming=True,
+    )
+    assert df.take_all() == [{"num_rows": 700}, {"num_rows": 300}]
 
 
 def test_filter(sp: Session):

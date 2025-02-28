@@ -19,6 +19,7 @@ authors = [
     { name = "Minghua Zhang" },
     { name = "Zhewen Hao" },
 ]
+readme = "README.md"
 urls = { Homepage = "https://github.com/deepseek-ai/smallpond" }
 keywords = ["distributed query processing", "SQL", "parquet"]
 requires-python = ">=3.8"

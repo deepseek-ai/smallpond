@@ -44,9 +44,7 @@ def remove_path(path: str):
             os.symlink(realpath, link)
             return
         except Exception as ex:
-            logger.opt(exception=ex).debug(
-                f"fast recursive remove failed, fall back to shutil.rmtree('{realpath}')"
-            )
+            logger.opt(exception=ex).debug(f"fast recursive remove failed, fall back to shutil.rmtree('{realpath}')")
     shutil.rmtree(realpath, ignore_errors=True)
 
 
@@ -94,9 +92,7 @@ def dump(obj: Any, path: str, buffering=2 * MB, atomic_write=False) -> int:
                 raise
             except Exception as ex:
                 trace_str, trace_err = get_pickle_trace(obj)
-                logger.opt(exception=ex).error(
-                    f"pickle trace of {repr(obj)}:{os.linesep}{trace_str}"
-                )
+                logger.opt(exception=ex).error(f"pickle trace of {repr(obj)}:{os.linesep}{trace_str}")
                 if trace_err is None:
                     raise
                 else:
@@ -107,9 +103,7 @@ def dump(obj: Any, path: str, buffering=2 * MB, atomic_write=False) -> int:
 
     if atomic_write:
         directory, filename = os.path.split(path)
-        with tempfile.NamedTemporaryFile(
-            "wb", buffering=buffering, dir=directory, prefix=filename, delete=False
-        ) as fout:
+        with tempfile.NamedTemporaryFile("wb", buffering=buffering, dir=directory, prefix=filename, delete=False) as fout:
             write_to_file(fout)
             fout.seek(0, os.SEEK_END)
             size = fout.tell()

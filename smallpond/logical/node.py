@@ -132,9 +132,7 @@ class Context(object):
         -------
             The unique function name.
         """
-        self.udfs[name] = PythonUDFContext(
-            name, func, params, return_type, use_arrow_type
-        )
+        self.udfs[name] = PythonUDFContext(name, func, params, return_type, use_arrow_type)
         return name
 
     def create_external_module(self, module_path: str, name: str = None) -> str:
@@ -213,18 +211,10 @@ class Node(object):
             This is a resource requirement specified by the user and used to guide
             task scheduling. smallpond does NOT enforce this limit.
         """
-        assert isinstance(
-            input_deps, Iterable
-        ), f"input_deps is not iterable: {input_deps}"
-        assert all(
-            isinstance(node, Node) for node in input_deps
-        ), f"some of input_deps are not instances of Node: {input_deps}"
-        assert output_name is None or re.match(
-            "[a-zA-Z0-9_]+", output_name
-        ), f"output_name has invalid format: {output_name}"
-        assert output_path is None or os.path.isabs(
-            output_path
-        ), f"output_path is not an absolute path: {output_path}"
+        assert isinstance(input_deps, Iterable), f"input_deps is not iterable: {input_deps}"
+        assert all(isinstance(node, Node) for node in input_deps), f"some of input_deps are not instances of Node: {input_deps}"
+        assert output_name is None or re.match("[a-zA-Z0-9_]+", output_name), f"output_name has invalid format: {output_name}"
+        assert output_path is None or os.path.isabs(output_path), f"output_path is not an absolute path: {output_path}"
         self.ctx = ctx
         self.id = self.ctx._new_node_id()
         self.input_deps = input_deps
@@ -238,10 +228,7 @@ class Node(object):
         self.perf_metrics: Dict[str, List[float]] = defaultdict(list)
         # record the location where the node is constructed in user code
         frame = next(
-            frame
-            for frame in reversed(traceback.extract_stack())
-            if frame.filename != __file__
-            and not frame.filename.endswith("/dataframe.py")
+            frame for frame in reversed(traceback.extract_stack()) if frame.filename != __file__ and not frame.filename.endswith("/dataframe.py")
         )
         self.location = f"{frame.filename}:{frame.lineno}"
 
@@ -290,9 +277,7 @@ class Node(object):
             values = self.perf_metrics[name]
             min, max, avg = np.min(values), np.max(values), np.average(values)
             p50, p75, p95, p99 = np.percentile(values, (50, 75, 95, 99))
-            self.perf_stats[name] = PerfStats(
-                len(values), sum(values), min, max, avg, p50, p75, p95, p99
-            )
+            self.perf_stats[name] = PerfStats(len(values), sum(values), min, max, avg, p50, p75, p95, p99)
         return self.perf_stats[name]
 
     @property
@@ -378,9 +363,7 @@ class DataSinkNode(Node):
             "link_or_copy",
             "manifest",
         ), f"invalid sink type: {type}"
-        super().__init__(
-            ctx, input_deps, None, output_path, cpu_limit=1, gpu_limit=0, memory_limit=0
-        )
+        super().__init__(ctx, input_deps, None, output_path, cpu_limit=1, gpu_limit=0, memory_limit=0)
         self.type: DataSinkType = "manifest" if manifest_only else type
         self.is_final_node = is_final_node
 
@@ -402,12 +385,7 @@ class DataSinkNode(Node):
         if self.type == "copy" or self.type == "link_or_copy":
             # so we create two phase tasks:
             # phase1: copy data to a temp directory, for each input partition in parallel
-            input_deps = [
-                self._create_phase1_task(
-                    runtime_ctx, task, [PartitionInfo(i, len(input_deps))]
-                )
-                for i, task in enumerate(input_deps)
-            ]
+            input_deps = [self._create_phase1_task(runtime_ctx, task, [PartitionInfo(i, len(input_deps))]) for i, task in enumerate(input_deps)]
             # phase2: resolve file name conflicts, hard link files, create manifest file, and clean up temp directory
             return DataSinkTask(
                 runtime_ctx,
@@ -445,9 +423,7 @@ class DataSinkNode(Node):
         input_dep: Task,
         partition_infos: List[PartitionInfo],
     ) -> DataSinkTask:
-        return DataSinkTask(
-            runtime_ctx, [input_dep], partition_infos, self.output_path, type=self.type
-        )
+        return DataSinkTask(runtime_ctx, [input_dep], partition_infos, self.output_path, type=self.type)
 
 
 class PythonScriptNode(Node):
@@ -467,9 +443,7 @@ class PythonScriptNode(Node):
         ctx: Context,
         input_deps: Tuple[Node, ...],
         *,
-        process_func: Optional[
-            Callable[[RuntimeContext, List[DataSet], str], bool]
-        ] = None,
+        process_func: Optional[Callable[[RuntimeContext, List[DataSet], str], bool]] = None,
         output_name: Optional[str] = None,
         output_path: Optional[str] = None,
         cpu_limit: int = 1,
@@ -646,9 +620,7 @@ class ArrowComputeNode(Node):
             gpu_limit,
             memory_limit,
         )
-        self.parquet_row_group_size = (
-            parquet_row_group_size or self.default_row_group_size
-        )
+        self.parquet_row_group_size = parquet_row_group_size or self.default_row_group_size
         self.parquet_dictionary_encoding = parquet_dictionary_encoding
         self.parquet_compression = parquet_compression
         self.parquet_compression_level = parquet_compression_level
@@ -708,9 +680,7 @@ class ArrowComputeNode(Node):
         """
         return ArrowComputeTask(*args, **kwargs)
 
-    def process(
-        self, runtime_ctx: RuntimeContext, input_tables: List[arrow.Table]
-    ) -> arrow.Table:
+    def process(self, runtime_ctx: RuntimeContext, input_tables: List[arrow.Table]) -> arrow.Table:
         """
         Put user-defined code here.
 
@@ -749,9 +719,7 @@ class ArrowStreamNode(Node):
         ctx: Context,
         input_deps: Tuple[Node, ...],
         *,
-        process_func: Callable[
-            [RuntimeContext, List[arrow.RecordBatchReader]], Iterable[arrow.Table]
-        ] = None,
+        process_func: Callable[[RuntimeContext, List[arrow.RecordBatchReader]], Iterable[arrow.Table]] = None,
         background_io_thread=True,
         streaming_batch_size: int = None,
         secs_checkpoint_interval: int = None,
@@ -816,12 +784,9 @@ class ArrowStreamNode(Node):
         self.background_io_thread = background_io_thread and self.cpu_limit > 1
         self.streaming_batch_size = streaming_batch_size or self.default_batch_size
         self.secs_checkpoint_interval = secs_checkpoint_interval or math.ceil(
-            self.default_secs_checkpoint_interval
-            / min(6, self.gpu_limit + 2, self.cpu_limit)
+            self.default_secs_checkpoint_interval / min(6, self.gpu_limit + 2, self.cpu_limit)
         )
-        self.parquet_row_group_size = (
-            parquet_row_group_size or self.default_row_group_size
-        )
+        self.parquet_row_group_size = parquet_row_group_size or self.default_row_group_size
         self.parquet_dictionary_encoding = parquet_dictionary_encoding
         self.parquet_compression = parquet_compression
         self.parquet_compression_level = parquet_compression_level
@@ -890,9 +855,7 @@ class ArrowStreamNode(Node):
         """
         return ArrowStreamTask(*args, **kwargs)
 
-    def process(
-        self, runtime_ctx: RuntimeContext, input_readers: List[arrow.RecordBatchReader]
-    ) -> Iterable[arrow.Table]:
+    def process(self, runtime_ctx: RuntimeContext, input_readers: List[arrow.RecordBatchReader]) -> Iterable[arrow.Table]:
         """
         Put user-defined code here.
 
@@ -918,9 +881,7 @@ class ArrowBatchNode(ArrowStreamNode):
     def spawn(self, *args, **kwargs) -> ArrowBatchTask:
         return ArrowBatchTask(*args, **kwargs)
 
-    def process(
-        self, runtime_ctx: RuntimeContext, input_tables: List[arrow.Table]
-    ) -> arrow.Table:
+    def process(self, runtime_ctx: RuntimeContext, input_tables: List[arrow.Table]) -> arrow.Table:
         raise NotImplementedError
 
 
@@ -932,9 +893,7 @@ class PandasComputeNode(ArrowComputeNode):
     def spawn(self, *args, **kwargs) -> PandasComputeTask:
         return PandasComputeTask(*args, **kwargs)
 
-    def process(
-        self, runtime_ctx: RuntimeContext, input_dfs: List[pd.DataFrame]
-    ) -> pd.DataFrame:
+    def process(self, runtime_ctx: RuntimeContext, input_dfs: List[pd.DataFrame]) -> pd.DataFrame:
         raise NotImplementedError
 
 
@@ -946,9 +905,7 @@ class PandasBatchNode(ArrowStreamNode):
     def spawn(self, *args, **kwargs) -> PandasBatchTask:
         return PandasBatchTask(*args, **kwargs)
 
-    def process(
-        self, runtime_ctx: RuntimeContext, input_dfs: List[pd.DataFrame]
-    ) -> pd.DataFrame:
+    def process(self, runtime_ctx: RuntimeContext, input_dfs: List[pd.DataFrame]) -> pd.DataFrame:
         raise NotImplementedError
 
 
@@ -1064,13 +1021,8 @@ class SqlEngineNode(Node):
         cpu_limit = cpu_limit or self.default_cpu_limit
         memory_limit = memory_limit or self.default_memory_limit
         if udfs is not None:
-            if (
-                self.max_udf_cpu_limit is not None
-                and cpu_limit > self.max_udf_cpu_limit
-            ):
-                warnings.warn(
-                    f"UDF execution is not highly paralleled, downgrade cpu_limit from {cpu_limit} to {self.max_udf_cpu_limit}"
-                )
+            if self.max_udf_cpu_limit is not None and cpu_limit > self.max_udf_cpu_limit:
+                warnings.warn(f"UDF execution is not highly paralleled, downgrade cpu_limit from {cpu_limit} to {self.max_udf_cpu_limit}")
                 cpu_limit = self.max_udf_cpu_limit
                 memory_limit = None
         if relax_memory_if_oom is not None:
@@ -1080,10 +1032,7 @@ class SqlEngineNode(Node):
                 stacklevel=3,
             )
 
-        assert isinstance(sql_query, str) or (
-            isinstance(sql_query, Iterable)
-            and all(isinstance(q, str) for q in sql_query)
-        )
+        assert isinstance(sql_query, str) or (isinstance(sql_query, Iterable) and all(isinstance(q, str) for q in sql_query))
         super().__init__(
             ctx,
             input_deps,
@@ -1092,17 +1041,13 @@ class SqlEngineNode(Node):
             cpu_limit=cpu_limit,
             memory_limit=memory_limit,
         )
-        self.sql_queries = (
-            [sql_query] if isinstance(sql_query, str) else list(sql_query)
-        )
-        self.udfs = [
-            ctx.create_duckdb_extension(path) for path in extension_paths or []
-        ] + [ctx.create_external_module(path) for path in udf_module_paths or []]
+        self.sql_queries = [sql_query] if isinstance(sql_query, str) else list(sql_query)
+        self.udfs = [ctx.create_duckdb_extension(path) for path in extension_paths or []] + [
+            ctx.create_external_module(path) for path in udf_module_paths or []
+        ]
         for udf in udfs or []:
             if isinstance(udf, UserDefinedFunction):
-                name = ctx.create_function(
-                    udf.name, udf.func, udf.params, udf.return_type, udf.use_arrow_type
-                )
+                name = ctx.create_function(udf.name, udf.func, udf.params, udf.return_type, udf.use_arrow_type)
             else:
                 assert isinstance(udf, str), f"udf must be a string: {udf}"
                 if udf in ctx.udfs:
@@ -1120,9 +1065,7 @@ class SqlEngineNode(Node):
         self.materialize_in_memory = materialize_in_memory
         self.batched_processing = batched_processing and len(input_deps) == 1
         self.enable_temp_directory = enable_temp_directory
-        self.parquet_row_group_size = (
-            parquet_row_group_size or self.default_row_group_size
-        )
+        self.parquet_row_group_size = parquet_row_group_size or self.default_row_group_size
         self.parquet_dictionary_encoding = parquet_dictionary_encoding
         self.parquet_compression = parquet_compression
         self.parquet_compression_level = parquet_compression_level
@@ -1130,17 +1073,11 @@ class SqlEngineNode(Node):
         self.memory_overcommit_ratio = memory_overcommit_ratio
 
     def __str__(self) -> str:
-        return (
-            super().__str__()
-            + f", sql_query=<{self.oneline_query[:100]}...>, udfs={self.udfs}, batched_processing={self.batched_processing}"
-        )
+        return super().__str__() + f", sql_query=<{self.oneline_query[:100]}...>, udfs={self.udfs}, batched_processing={self.batched_processing}"
 
     @property
     def oneline_query(self) -> str:
-        return "; ".join(
-            " ".join(filter(None, map(str.strip, query.splitlines())))
-            for query in self.sql_queries
-        )
+        return "; ".join(" ".join(filter(None, map(str.strip, query.splitlines()))) for query in self.sql_queries)
 
     @Node.task_factory
     def create_task(
@@ -1224,12 +1161,8 @@ class ConsolidateNode(Node):
         dimensions
             Partitions would be grouped by these `dimensions` and consolidated into larger partitions.
         """
-        assert isinstance(
-            dimensions, Iterable
-        ), f"dimensions is not iterable: {dimensions}"
-        assert all(
-            isinstance(dim, str) for dim in dimensions
-        ), f"some dimensions are not strings: {dimensions}"
+        assert isinstance(dimensions, Iterable), f"dimensions is not iterable: {dimensions}"
+        assert all(isinstance(dim, str) for dim in dimensions), f"some dimensions are not strings: {dimensions}"
         super().__init__(ctx, [input_dep])
         self.dimensions = set(list(dimensions) + [PartitionInfo.toplevel_dimension])
 
@@ -1283,29 +1216,16 @@ class PartitionNode(Node):
         See unit tests in `test/test_partition.py`. For nested partition see `test_nested_partition`.
         Why nested partition? See **5.1 Partial Partitioning** of [Advanced partitioning techniques for massively distributed computation](https://dl.acm.org/doi/10.1145/2213836.2213839).
         """
-        assert isinstance(
-            npartitions, int
-        ), f"npartitions is not an integer: {npartitions}"
-        assert dimension is None or re.match(
-            "[a-zA-Z0-9_]+", dimension
-        ), f"dimension has invalid format: {dimension}"
-        assert not (
-            nested and dimension is None
-        ), f"nested partition should have dimension"
-        super().__init__(
-            ctx, input_deps, output_name, output_path, cpu_limit, 0, memory_limit
-        )
+        assert isinstance(npartitions, int), f"npartitions is not an integer: {npartitions}"
+        assert dimension is None or re.match("[a-zA-Z0-9_]+", dimension), f"dimension has invalid format: {dimension}"
+        assert not (nested and dimension is None), f"nested partition should have dimension"
+        super().__init__(ctx, input_deps, output_name, output_path, cpu_limit, 0, memory_limit)
         self.npartitions = npartitions
-        self.dimension = (
-            dimension if dimension is not None else PartitionInfo.default_dimension
-        )
+        self.dimension = dimension if dimension is not None else PartitionInfo.default_dimension
         self.nested = nested
 
     def __str__(self) -> str:
-        return (
-            super().__str__()
-            + f", npartitions={self.npartitions}, dimension={self.dimension}, nested={self.nested}"
-        )
+        return super().__str__() + f", npartitions={self.npartitions}, dimension={self.dimension}, nested={self.nested}"
 
     @Node.task_factory
     def create_producer_task(
@@ -1441,12 +1361,8 @@ class UserDefinedPartitionNode(PartitionNode):
 class UserPartitionedDataSourceNode(UserDefinedPartitionNode):
     max_num_producer_tasks = 1
 
-    def __init__(
-        self, ctx: Context, partitioned_datasets: List[DataSet], dimension: str = None
-    ) -> None:
-        assert isinstance(partitioned_datasets, Iterable) and all(
-            isinstance(dataset, DataSet) for dataset in partitioned_datasets
-        )
+    def __init__(self, ctx: Context, partitioned_datasets: List[DataSet], dimension: str = None) -> None:
+        assert isinstance(partitioned_datasets, Iterable) and all(isinstance(dataset, DataSet) for dataset in partitioned_datasets)
         super().__init__(
             ctx,
             [DataSourceNode(ctx, dataset=None)],
@@ -1507,10 +1423,7 @@ class EvenlyDistributedPartitionNode(PartitionNode):
         self.random_shuffle = random_shuffle
 
     def __str__(self) -> str:
-        return (
-            super().__str__()
-            + f", partition_by_rows={self.partition_by_rows}, random_shuffle={self.random_shuffle}"
-        )
+        return super().__str__() + f", partition_by_rows={self.partition_by_rows}, random_shuffle={self.random_shuffle}"
 
     @Node.task_factory
     def create_producer_task(
@@ -1551,9 +1464,7 @@ class LoadPartitionedDataSetNode(PartitionNode):
         cpu_limit: int = 1,
         memory_limit: Optional[int] = None,
     ) -> None:
-        assert (
-            dimension or data_partition_column
-        ), f"Both 'dimension' and 'data_partition_column' are none or empty"
+        assert dimension or data_partition_column, f"Both 'dimension' and 'data_partition_column' are none or empty"
         super().__init__(
             ctx,
             input_deps,
@@ -1567,10 +1478,7 @@ class LoadPartitionedDataSetNode(PartitionNode):
         self.hive_partitioning = hive_partitioning
 
     def __str__(self) -> str:
-        return (
-            super().__str__()
-            + f", data_partition_column={self.data_partition_column}, hive_partitioning={self.hive_partitioning}"
-        )
+        return super().__str__() + f", data_partition_column={self.data_partition_column}, hive_partitioning={self.hive_partitioning}"
 
     @Node.task_factory
     def create_producer_task(
@@ -1620,9 +1528,7 @@ def DataSetPartitionNode(
     --------
     See unit test `test_load_partitioned_datasets` in `test/test_partition.py`.
     """
-    assert not (
-        partition_by_rows and data_partition_column
-    ), "partition_by_rows and data_partition_column cannot be set at the same time"
+    assert not (partition_by_rows and data_partition_column), "partition_by_rows and data_partition_column cannot be set at the same time"
     if data_partition_column is None:
         partition_node = EvenlyDistributedPartitionNode(
             ctx,
@@ -1720,12 +1626,8 @@ class HashPartitionNode(PartitionNode):
             Specify if we should use dictionary encoding in general or only for some columns.
             See `use_dictionary` in https://arrow.apache.org/docs/python/generated/pyarrow.parquet.ParquetWriter.html.
         """
-        assert (
-            not random_shuffle or not shuffle_only
-        ), f"random_shuffle and shuffle_only cannot be enabled at the same time"
-        assert (
-            not shuffle_only or data_partition_column is not None
-        ), f"data_partition_column not specified for shuffle-only partitioning"
+        assert not random_shuffle or not shuffle_only, f"random_shuffle and shuffle_only cannot be enabled at the same time"
+        assert not shuffle_only or data_partition_column is not None, f"data_partition_column not specified for shuffle-only partitioning"
         assert data_partition_column is None or re.match(
             "[a-zA-Z0-9_]+", data_partition_column
         ), f"data_partition_column has invalid format: {data_partition_column}"
@@ -1734,9 +1636,7 @@ class HashPartitionNode(PartitionNode):
             "duckdb",
             "arrow",
         ), f"unknown query engine type: {engine_type}"
-        data_partition_column = (
-            data_partition_column or self.default_data_partition_column
-        )
+        data_partition_column = data_partition_column or self.default_data_partition_column
         super().__init__(
             ctx,
             input_deps,
@@ -1756,9 +1656,7 @@ class HashPartitionNode(PartitionNode):
         self.drop_partition_column = drop_partition_column
         self.use_parquet_writer = use_parquet_writer
         self.hive_partitioning = hive_partitioning and self.engine_type == "duckdb"
-        self.parquet_row_group_size = (
-            parquet_row_group_size or self.default_row_group_size
-        )
+        self.parquet_row_group_size = parquet_row_group_size or self.default_row_group_size
         self.parquet_dictionary_encoding = parquet_dictionary_encoding
         self.parquet_compression = parquet_compression
         self.parquet_compression_level = parquet_compression_level
@@ -1929,22 +1827,15 @@ class ProjectionNode(Node):
         """
         columns = columns or ["*"]
         generated_columns = generated_columns or []
-        assert all(
-            col in GENERATED_COLUMNS for col in generated_columns
-        ), f"invalid values found in generated columns: {generated_columns}"
-        assert not (
-            set(columns) & set(generated_columns)
-        ), f"columns {columns} and generated columns {generated_columns} share common columns"
+        assert all(col in GENERATED_COLUMNS for col in generated_columns), f"invalid values found in generated columns: {generated_columns}"
+        assert not (set(columns) & set(generated_columns)), f"columns {columns} and generated columns {generated_columns} share common columns"
         super().__init__(ctx, [input_dep])
         self.columns = columns
         self.generated_columns = generated_columns
         self.union_by_name = union_by_name
 
     def __str__(self) -> str:
-        return (
-            super().__str__()
-            + f", columns={self.columns}, generated_columns={self.generated_columns}, union_by_name={self.union_by_name}"
-        )
+        return super().__str__() + f", columns={self.columns}, generated_columns={self.generated_columns}, union_by_name={self.union_by_name}"
 
     @Node.task_factory
     def create_task(
@@ -2100,10 +1991,7 @@ class LogicalPlan(object):
             if node.id in visited:
                 return lines + ["  " * depth + " (omitted ...)"]
             visited.add(node.id)
-            lines += [
-                "  " * depth + f" | {name}: {stats}"
-                for name, stats in node.perf_stats.items()
-            ]
+            lines += ["  " * depth + f" | {name}: {stats}" for name, stats in node.perf_stats.items()]
             for dep in node.input_deps:
                 lines.extend(to_str(dep, depth + 1))
             return lines

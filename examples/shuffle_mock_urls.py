@@ -11,9 +11,7 @@ from smallpond.logical.node import (
 )
 
 
-def shuffle_mock_urls(
-    input_paths, npartitions: int = 10, sort_rand_keys=True, engine_type="duckdb"
-) -> LogicalPlan:
+def shuffle_mock_urls(input_paths, npartitions: int = 10, sort_rand_keys=True, engine_type="duckdb") -> LogicalPlan:
     ctx = Context()
     dataset = ParquetDataSet(input_paths)
     data_files = DataSourceNode(ctx, dataset)
@@ -61,9 +59,7 @@ def main():
     driver.add_argument("-i", "--input_paths", nargs="+")
     driver.add_argument("-n", "--npartitions", type=int, default=500)
     driver.add_argument("-s", "--sort_rand_keys", action="store_true")
-    driver.add_argument(
-        "-e", "--engine_type", default="duckdb", choices=("duckdb", "arrow")
-    )
+    driver.add_argument("-e", "--engine_type", default="duckdb", choices=("duckdb", "arrow"))
 
     plan = shuffle_mock_urls(**driver.get_arguments())
     driver.run(plan)

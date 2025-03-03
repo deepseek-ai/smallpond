@@ -41,9 +41,7 @@ def clamp_row_group_size(val, minval=DEFAULT_ROW_GROUP_SIZE, maxval=MAX_ROW_GROU
     return clamp_value(val, minval, maxval)
 
 
-def clamp_row_group_bytes(
-    val, minval=DEFAULT_ROW_GROUP_BYTES, maxval=MAX_ROW_GROUP_BYTES
-):
+def clamp_row_group_bytes(val, minval=DEFAULT_ROW_GROUP_BYTES, maxval=MAX_ROW_GROUP_BYTES):
     return clamp_value(val, minval, maxval)
 
 
@@ -74,10 +72,7 @@ def first_value_in_dict(d: Dict[K, V]) -> V:
 def split_into_cols(items: List[V], npartitions: int) -> List[List[V]]:
     none = object()
     chunks = [items[i : i + npartitions] for i in range(0, len(items), npartitions)]
-    return [
-        [x for x in col if x is not none]
-        for col in itertools.zip_longest([none] * npartitions, *chunks, fillvalue=none)
-    ]
+    return [[x for x in col if x is not none] for col in itertools.zip_longest([none] * npartitions, *chunks, fillvalue=none)]
 
 
 def split_into_rows(items: List[V], npartitions: int) -> List[List[V]]:
@@ -101,10 +96,7 @@ def get_nth_partition(items: List[V], n: int, npartitions: int) -> List[V]:
         start = n * large_partition_size
         items_in_partition = items[start : start + large_partition_size]
     else:
-        start = (
-            large_partition_size * num_large_partitions
-            + (n - num_large_partitions) * small_partition_size
-        )
+        start = large_partition_size * num_large_partitions + (n - num_large_partitions) * small_partition_size
         items_in_partition = items[start : start + small_partition_size]
     return items_in_partition
 

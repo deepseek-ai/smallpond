@@ -80,9 +80,7 @@ def check_data(actual: bytes, expected: bytes, offset: int) -> None:
     )
     expected = expected[index : index + 16]
     actual = actual[index : index + 16]
-    raise ValueError(
-        f"Data mismatch at offset {offset + index}.\nexpect: {expected}\nactual: {actual}"
-    )
+    raise ValueError(f"Data mismatch at offset {offset + index}.\nexpect: {expected}\nactual: {actual}")
 
 
 def generate_data(offset: int, length: int) -> bytes:
@@ -92,16 +90,10 @@ def generate_data(offset: int, length: int) -> bytes:
     """
     istart = offset // 4
     iend = (offset + length + 3) // 4
-    return (
-        np.arange(istart, iend)
-        .astype(np.uint32)
-        .tobytes()[offset % 4 : offset % 4 + length]
-    )
+    return np.arange(istart, iend).astype(np.uint32).tobytes()[offset % 4 : offset % 4 + length]
 
 
-def iter_io_slice(
-    offset: int, length: int, block_size: Union[int, Tuple[int, int]]
-) -> Iterator[Tuple[int, int]]:
+def iter_io_slice(offset: int, length: int, block_size: Union[int, Tuple[int, int]]) -> Iterator[Tuple[int, int]]:
     """
     Generate the IO (offset, size) for the slice [offset, offset + length) with the given block size.
     `block_size` can be an integer or a range [start, end]. If a range is provided, the IO size will be randomly selected from the range.
@@ -161,9 +153,7 @@ def fstest(
 
     if output_path is not None:
         os.makedirs(output_path, exist_ok=True)
-        df = sp.from_items(
-            [{"path": os.path.join(output_path, f"{i}")} for i in range(npartitions)]
-        )
+        df = sp.from_items([{"path": os.path.join(output_path, f"{i}")} for i in range(npartitions)])
         df = df.repartition(npartitions, by_rows=True)
         stats = df.map(lambda x: fswrite(x["path"], size, blocksize)).to_pandas()
         logging.info(f"write stats:\n{stats}")
@@ -187,18 +177,14 @@ if __name__ == "__main__":
         python example/fstest.py -o 'fstest' -j 8 -s 1G -i 'fstest/*'
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "-o", "--output_path", type=str, help="The output path to write data to."
-    )
+    parser.add_argument("-o", "--output_path", type=str, help="The output path to write data to.")
     parser.add_argument(
         "-i",
         "--input_path",
         type=str,
         help="The input path to read data from. If -o is provided, this is ignored.",
     )
-    parser.add_argument(
-        "-j", "--npartitions", type=int, help="The number of parallel jobs", default=10
-    )
+    parser.add_argument("-j", "--npartitions", type=int, help="The number of parallel jobs", default=10)
     parser.add_argument(
         "-s",
         "--size",

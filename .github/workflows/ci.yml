@@ -26,7 +26,7 @@ jobs:
           
       - name: Check code formatting
         run: |
-          black --check .
+          black --check --line-length=150 .
 
       # - name: Check typos
       #   uses: crate-ci/typos@v1.29.10

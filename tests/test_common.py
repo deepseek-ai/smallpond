@@ -34,9 +34,7 @@ class TestCommon(TestFabric, unittest.TestCase):
         npartitions = data.draw(st.integers(1, 2 * nelements))
         items = list(range(nelements))
         computed = split_into_rows(items, npartitions)
-        expected = [
-            get_nth_partition(items, n, npartitions) for n in range(npartitions)
-        ]
+        expected = [get_nth_partition(items, n, npartitions) for n in range(npartitions)]
         self.assertEqual(expected, computed)
 
     @given(st.data())

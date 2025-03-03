@@ -17,9 +17,7 @@ class TestFilesystem(TestFabric, unittest.TestCase):
 
     def test_pickle_trace(self):
         with self.assertRaises(TypeError) as context:
-            with tempfile.TemporaryDirectory(
-                dir=self.output_root_abspath
-            ) as output_dir:
+            with tempfile.TemporaryDirectory(dir=self.output_root_abspath) as output_dir:
                 thread = threading.Thread()
                 pickle_path = os.path.join(output_dir, "thread.pickle")
                 dump(thread, pickle_path)

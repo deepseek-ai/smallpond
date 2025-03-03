@@ -70,9 +70,7 @@ def test_flat_map(sp: Session):
 
     # user need to specify the schema if can not be inferred from the mapping values
     df3 = df.flat_map(lambda r: [{"c": None}], schema=pa.schema([("c", pa.int64())]))
-    assert df3.to_arrow() == pa.table(
-        {"c": pa.array([None, None, None], type=pa.int64())}
-    )
+    assert df3.to_arrow() == pa.table({"c": pa.array([None, None, None], type=pa.int64())})
 
 
 def test_map_batches(sp: Session):
@@ -99,10 +97,7 @@ def test_random_shuffle(sp: Session):
     assert sorted(shuffled) == list(range(1000))
 
     def count_inversions(arr: List[int]) -> int:
-        return sum(
-            sum(1 for j in range(i + 1, len(arr)) if arr[i] > arr[j])
-            for i in range(len(arr))
-        )
+        return sum(sum(1 for j in range(i + 1, len(arr)) if arr[i] > arr[j]) for i in range(len(arr)))
 
     # check the shuffle is random enough
     # the expected number of inversions is n*(n-1)/4 = 249750
@@ -158,9 +153,7 @@ def test_partial_sql(sp: Session):
     # join
     df1 = sp.from_arrow(pa.table({"id1": [1, 2, 3], "val1": ["a", "b", "c"]}))
     df2 = sp.from_arrow(pa.table({"id2": [1, 2, 3], "val2": ["d", "e", "f"]}))
-    joined = sp.partial_sql(
-        "select id1, val1, val2 from {0} join {1} on id1 = id2", df1, df2
-    )
+    joined = sp.partial_sql("select id1, val1, val2 from {0} join {1} on id1 = id2", df1, df2)
     assert joined.to_arrow() == pa.table(
         {"id1": [1, 2, 3], "val1": ["a", "b", "c"], "val2": ["d", "e", "f"]},
         schema=pa.schema(
@@ -193,10 +186,7 @@ def test_unpicklable_task_exception(sp: Session):
         df.map(lambda x: logger.info("use outside logger")).to_arrow()
     except Exception as ex:
         assert "Can't pickle task" in str(ex)
-        assert (
-            "HINT: DO NOT use externally imported loguru logger in your task. Please import it within the task."
-            in str(ex)
-        )
+        assert "HINT: DO NOT use externally imported loguru logger in your task. Please import it within the task." in str(ex)
     else:
         assert False, "expected exception"
 

@@ -21,9 +21,7 @@ from tests.test_fabric import TestFabric
 
 
 class RandomSleepTask(PythonScriptTask):
-    def __init__(
-        self, *args, sleep_secs: float, fail_first_try: bool, **kwargs
-    ) -> None:
+    def __init__(self, *args, sleep_secs: float, fail_first_try: bool, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.sleep_secs = sleep_secs
         self.fail_first_try = fail_first_try
@@ -58,24 +56,16 @@ class RandomSleepNode(PythonScriptNode):
         self.fail_first_try = fail_first_try
 
     def spawn(self, *args, **kwargs) -> RandomSleepTask:
-        sleep_secs = (
-            random.random() if len(self.generated_tasks) % 20 else self.max_sleep_secs
-        )
-        return RandomSleepTask(
-            *args, **kwargs, sleep_secs=sleep_secs, fail_first_try=self.fail_first_try
-        )
+        sleep_secs = random.random() if len(self.generated_tasks) % 20 else self.max_sleep_secs
+        return RandomSleepTask(*args, **kwargs, sleep_secs=sleep_secs, fail_first_try=self.fail_first_try)
 
 
 class TestScheduler(TestFabric, unittest.TestCase):
-    def create_random_sleep_plan(
-        self, npartitions, max_sleep_secs, fail_first_try=False
-    ):
+    def create_random_sleep_plan(self, npartitions, max_sleep_secs, fail_first_try=False):
         ctx = Context()
         dataset = ParquetDataSet(["tests/data/mock_urls/*.parquet"])
         data_files = DataSourceNode(ctx, dataset)
-        data_partitions = DataSetPartitionNode(
-            ctx, (data_files,), npartitions=npartitions, partition_by_rows=True
-        )
+        data_partitions = DataSetPartitionNode(ctx, (data_files,), npartitions=npartitions, partition_by_rows=True)
         random_sleep = RandomSleepNode(
             ctx,
             (data_partitions,),
@@ -87,13 +77,8 @@ class TestScheduler(TestFabric, unittest.TestCase):
     def check_executor_state(self, target_state: ExecutorState, nloops=200):
         for _ in range(nloops):
             latest_sched_state = self.get_latest_sched_state()
-            if any(
-                executor.state == target_state
-                for executor in latest_sched_state.remote_executors
-            ):
-                logger.info(
-                    f"found {target_state} executor in: {latest_sched_state.remote_executors}"
-                )
+            if any(executor.state == target_state for executor in latest_sched_state.remote_executors):
+                logger.info(f"found {target_state} executor in: {latest_sched_state.remote_executors}")
                 break
             time.sleep(0.1)
         else:
@@ -121,9 +106,7 @@ class TestScheduler(TestFabric, unittest.TestCase):
         latest_sched_state = self.get_latest_sched_state()
         self.check_executor_state(ExecutorState.GOOD)
 
-        for i, (executor, process) in enumerate(
-            random.sample(list(zip(executors, processes[1:])), k=num_fail)
-        ):
+        for i, (executor, process) in enumerate(random.sample(list(zip(executors, processes[1:])), k=num_fail)):
             if i % 2 == 0:
                 logger.warning(f"kill executor: {executor}")
                 process.kill()
@@ -165,9 +148,7 @@ class TestScheduler(TestFabric, unittest.TestCase):
                     self.assertGreater(len(latest_sched_state.abandoned_tasks), 0)
 
     def test_stop_executor_on_failure(self):
-        plan = self.create_random_sleep_plan(
-            npartitions=3, max_sleep_secs=5, fail_first_try=True
-        )
+        plan = self.create_random_sleep_plan(npartitions=3, max_sleep_secs=5, fail_first_try=True)
         exec_plan = self.execute_plan(
             plan,
             num_executors=5,

@@ -29,9 +29,7 @@ def urls_sort_benchmark(
         delim=r"\t",
     )
     data_files = DataSourceNode(ctx, dataset)
-    data_partitions = DataSetPartitionNode(
-        ctx, (data_files,), npartitions=num_data_partitions
-    )
+    data_partitions = DataSetPartitionNode(ctx, (data_files,), npartitions=num_data_partitions)
 
     imported_urls = SqlEngineNode(
         ctx,
@@ -80,16 +78,10 @@ def urls_sort_benchmark_v2(
     sort_cpu_limit=8,
     sort_memory_limit=None,
 ):
-    dataset = sp.read_csv(
-        input_paths, schema={"urlstr": "varchar", "valstr": "varchar"}, delim=r"\t"
-    )
+    dataset = sp.read_csv(input_paths, schema={"urlstr": "varchar", "valstr": "varchar"}, delim=r"\t")
     data_partitions = dataset.repartition(num_data_partitions)
-    urls_partitions = data_partitions.repartition(
-        num_hash_partitions, hash_by="urlstr", engine_type=engine_type
-    )
-    sorted_urls = urls_partitions.partial_sort(
-        by="urlstr", cpu_limit=sort_cpu_limit, memory_limit=sort_memory_limit
-    )
+    urls_partitions = data_partitions.repartition(num_hash_partitions, hash_by="urlstr", engine_type=engine_type)
+    sorted_urls = urls_partitions.partial_sort(by="urlstr", cpu_limit=sort_cpu_limit, memory_limit=sort_memory_limit)
     sorted_urls.write_parquet(output_path)
 
 
@@ -106,12 +98,8 @@ def main():
     num_nodes = driver_args.num_executors
     cpus_per_node = 120
     partition_rounds = 2
-    user_args.num_data_partitions = (
-        user_args.num_data_partitions or num_nodes * cpus_per_node * partition_rounds
-    )
-    user_args.num_hash_partitions = (
-        user_args.num_hash_partitions or num_nodes * cpus_per_node
-    )
+    user_args.num_data_partitions = user_args.num_data_partitions or num_nodes * cpus_per_node * partition_rounds
+    user_args.num_hash_partitions = user_args.num_hash_partitions or num_nodes * cpus_per_node
 
     # v1
     plan = urls_sort_benchmark(**vars(user_args))

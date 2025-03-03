@@ -35,9 +35,7 @@ class Session(SessionBase):
         Subsequent DataFrames can reuse the tasks to avoid recomputation.
         """
 
-    def read_csv(
-        self, paths: Union[str, List[str]], schema: Dict[str, str], delim=","
-    ) -> DataFrame:
+    def read_csv(self, paths: Union[str, List[str]], schema: Dict[str, str], delim=",") -> DataFrame:
         """
         Create a DataFrame from CSV files.
         """
@@ -55,15 +53,11 @@ class Session(SessionBase):
         """
         Create a DataFrame from Parquet files.
         """
-        dataset = ParquetDataSet(
-            paths, columns=columns, union_by_name=union_by_name, recursive=recursive
-        )
+        dataset = ParquetDataSet(paths, columns=columns, union_by_name=union_by_name, recursive=recursive)
         plan = DataSourceNode(self._ctx, dataset)
         return DataFrame(self, plan)
 
-    def read_json(
-        self, paths: Union[str, List[str]], schema: Dict[str, str]
-    ) -> DataFrame:
+    def read_json(self, paths: Union[str, List[str]], schema: Dict[str, str]) -> DataFrame:
         """
         Create a DataFrame from JSON files.
         """
@@ -115,9 +109,7 @@ class Session(SessionBase):
             c = sp.partial_sql("select * from {0} join {1} on a.id = b.id", a, b)
         """
 
-        plan = SqlEngineNode(
-            self._ctx, tuple(input.plan for input in inputs), query, **kwargs
-        )
+        plan = SqlEngineNode(self._ctx, tuple(input.plan for input in inputs), query, **kwargs)
         recompute = any(input.need_recompute for input in inputs)
         return DataFrame(self, plan, recompute=recompute)
 
@@ -177,26 +169,15 @@ class Session(SessionBase):
         """
         Return the total number of tasks and the number of tasks that are finished.
         """
-        dataset_refs = [
-            task._dataset_ref
-            for tasks in self._node_to_tasks.values()
-            for task in tasks
-            if task._dataset_ref is not None
-        ]
-        ready_tasks, _ = ray.wait(
-            dataset_refs, num_returns=len(dataset_refs), timeout=0, fetch_local=False
-        )
+        dataset_refs = [task._dataset_ref for tasks in self._node_to_tasks.values() for task in tasks if task._dataset_ref is not None]
+        ready_tasks, _ = ray.wait(dataset_refs, num_returns=len(dataset_refs), timeout=0, fetch_local=False)
         return len(dataset_refs), len(ready_tasks)
 
     def _all_tasks_finished(self) -> bool:
         """
         Check if all tasks are finished.
         """
-        dataset_refs = [
-            task._dataset_ref
-            for tasks in self._node_to_tasks.values()
-            for task in tasks
-        ]
+        dataset_refs = [task._dataset_ref for tasks in self._node_to_tasks.values() for task in tasks]
         try:
             ray.get(dataset_refs, timeout=0)
         except Exception:
@@ -232,12 +213,8 @@ class DataFrame:
         # optimize the plan
         if self.optimized_plan is None:
             logger.info(f"optimizing\n{LogicalPlan(self.session._ctx, self.plan)}")
-            self.optimized_plan = Optimizer(
-                exclude_nodes=set(self.session._node_to_tasks.keys())
-            ).visit(self.plan)
-            logger.info(
-                f"optimized\n{LogicalPlan(self.session._ctx, self.optimized_plan)}"
-            )
+            self.optimized_plan = Optimizer(exclude_nodes=set(self.session._node_to_tasks.keys())).visit(self.plan)
+            logger.info(f"optimized\n{LogicalPlan(self.session._ctx, self.optimized_plan)}")
         # return the tasks if already created
         if tasks := self.session._node_to_tasks.get(self.optimized_plan):
             return tasks
@@ -281,9 +258,7 @@ class DataFrame:
         """
         for retry_count in range(3):
             try:
-                return ray.get(
-                    [task.run_on_ray() for task in self._get_or_create_tasks()]
-                )
+                return ray.get([task.run_on_ray() for task in self._get_or_create_tasks()])
             except ray.exceptions.RuntimeEnvSetupError as e:
                 # XXX: Ray may raise this error when a worker is interrupted.
                 #      ```
@@ -361,9 +336,7 @@ class DataFrame:
             )
         elif hash_by is not None:
             hash_columns = [hash_by] if isinstance(hash_by, str) else hash_by
-            plan = HashPartitionNode(
-                self.session._ctx, (self.plan,), npartitions, hash_columns, **kwargs
-            )
+            plan = HashPartitionNode(self.session._ctx, (self.plan,), npartitions, hash_columns, **kwargs)
         else:
             plan = EvenlyDistributedPartitionNode(
                 self.session._ctx,
@@ -420,9 +393,7 @@ class DataFrame:
         )
         return DataFrame(self.session, plan, recompute=self.need_recompute)
 
-    def filter(
-        self, sql_or_func: Union[str, Callable[[Dict[str, Any]], bool]], **kwargs
-    ) -> DataFrame:
+    def filter(self, sql_or_func: Union[str, Callable[[Dict[str, Any]], bool]], **kwargs) -> DataFrame:
         """
         Filter out rows that don't satisfy the given predicate.
 
@@ -453,13 +424,9 @@ class DataFrame:
                 table = tables[0]
                 return table.filter([func(row) for row in table.to_pylist()])
 
-            plan = ArrowBatchNode(
-                self.session._ctx, (self.plan,), process_func=process_func, **kwargs
-            )
+            plan = ArrowBatchNode(self.session._ctx, (self.plan,), process_func=process_func, **kwargs)
         else:
-            raise ValueError(
-                "condition must be a SQL expression or a predicate function"
-            )
+            raise ValueError("condition must be a SQL expression or a predicate function")
         return DataFrame(self.session, plan, recompute=self.need_recompute)
 
     def map(
@@ -510,18 +477,14 @@ class DataFrame:
 
         """
         if isinstance(sql := sql_or_func, str):
-            plan = SqlEngineNode(
-                self.session._ctx, (self.plan,), f"select {sql} from {{0}}", **kwargs
-            )
+            plan = SqlEngineNode(self.session._ctx, (self.plan,), f"select {sql} from {{0}}", **kwargs)
         elif isinstance(func := sql_or_func, Callable):
 
             def process_func(_runtime_ctx, tables: List[arrow.Table]) -> arrow.Table:
                 output_rows = [func(row) for row in tables[0].to_pylist()]
                 return arrow.Table.from_pylist(output_rows, schema=schema)
 
-            plan = ArrowBatchNode(
-                self.session._ctx, (self.plan,), process_func=process_func, **kwargs
-            )
+            plan = ArrowBatchNode(self.session._ctx, (self.plan,), process_func=process_func, **kwargs)
         else:
             raise ValueError(f"must be a SQL expression or a function: {sql_or_func!r}")
         return DataFrame(self.session, plan, recompute=self.need_recompute)
@@ -555,20 +518,14 @@ class DataFrame:
         """
         if isinstance(sql := sql_or_func, str):
 
-            plan = SqlEngineNode(
-                self.session._ctx, (self.plan,), f"select {sql} from {{0}}", **kwargs
-            )
+            plan = SqlEngineNode(self.session._ctx, (self.plan,), f"select {sql} from {{0}}", **kwargs)
         elif isinstance(func := sql_or_func, Callable):
 
             def process_func(_runtime_ctx, tables: List[arrow.Table]) -> arrow.Table:
-                output_rows = [
-                    item for row in tables[0].to_pylist() for item in func(row)
-                ]
+                output_rows = [item for row in tables[0].to_pylist() for item in func(row)]
                 return arrow.Table.from_pylist(output_rows, schema=schema)
 
-            plan = ArrowBatchNode(
-                self.session._ctx, (self.plan,), process_func=process_func, **kwargs
-            )
+            plan = ArrowBatchNode(self.session._ctx, (self.plan,), process_func=process_func, **kwargs)
         else:
             raise ValueError(f"must be a SQL expression or a function: {sql_or_func!r}")
         return DataFrame(self.session, plan, recompute=self.need_recompute)
@@ -642,9 +599,7 @@ class DataFrame:
             sp.wait(o1, o2)
         """
 
-        plan = DataSinkNode(
-            self.session._ctx, (self.plan,), os.path.abspath(path), type="link_or_copy"
-        )
+        plan = DataSinkNode(self.session._ctx, (self.plan,), os.path.abspath(path), type="link_or_copy")
         return DataFrame(self.session, plan, recompute=self.need_recompute)
 
     # inspection
@@ -710,6 +665,4 @@ class DataFrame:
         """
         datasets = self._compute()
         with ThreadPoolExecutor() as pool:
-            return arrow.concat_tables(
-                pool.map(lambda dataset: dataset.to_arrow_table(), datasets)
-            )
+            return arrow.concat_tables(pool.map(lambda dataset: dataset.to_arrow_table(), datasets))

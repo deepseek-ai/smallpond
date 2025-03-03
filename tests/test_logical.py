@@ -21,19 +21,11 @@ class TestLogicalPlan(TestFabric, unittest.TestCase):
     def test_join_chunkmeta_inodes(self):
         ctx = Context()
 
-        chunkmeta_dump = DataSourceNode(
-            ctx, dataset=ParquetDataSet(["tests/data/chunkmeta*.parquet"])
-        )
-        chunkmeta_partitions = HashPartitionNode(
-            ctx, (chunkmeta_dump,), npartitions=2, hash_columns=["inodeId"]
-        )
+        chunkmeta_dump = DataSourceNode(ctx, dataset=ParquetDataSet(["tests/data/chunkmeta*.parquet"]))
+        chunkmeta_partitions = HashPartitionNode(ctx, (chunkmeta_dump,), npartitions=2, hash_columns=["inodeId"])
 
-        inodes_dump = DataSourceNode(
-            ctx, dataset=ParquetDataSet(["tests/data/inodes*.parquet"])
-        )
-        inodes_partitions = HashPartitionNode(
-            ctx, (inodes_dump,), npartitions=2, hash_columns=["inode_id"]
-        )
+        inodes_dump = DataSourceNode(ctx, dataset=ParquetDataSet(["tests/data/inodes*.parquet"]))
+        inodes_partitions = HashPartitionNode(ctx, (inodes_dump,), npartitions=2, hash_columns=["inode_id"])
 
         num_gc_chunks = SqlEngineNode(
             ctx,
@@ -53,12 +45,8 @@ class TestLogicalPlan(TestFabric, unittest.TestCase):
         ctx = Context()
         parquet_dataset = ParquetDataSet(["tests/data/mock_urls/*.parquet"])
         data_source = DataSourceNode(ctx, parquet_dataset)
-        partition_dim_a = EvenlyDistributedPartitionNode(
-            ctx, (data_source,), npartitions=parquet_dataset.num_files, dimension="A"
-        )
-        partition_dim_b = EvenlyDistributedPartitionNode(
-            ctx, (data_source,), npartitions=parquet_dataset.num_files, dimension="B"
-        )
+        partition_dim_a = EvenlyDistributedPartitionNode(ctx, (data_source,), npartitions=parquet_dataset.num_files, dimension="A")
+        partition_dim_b = EvenlyDistributedPartitionNode(ctx, (data_source,), npartitions=parquet_dataset.num_files, dimension="B")
         join_two_inputs = SqlEngineNode(
             ctx,
             (partition_dim_a, partition_dim_b),
@@ -73,9 +61,7 @@ class TestLogicalPlan(TestFabric, unittest.TestCase):
         ctx = Context()
         parquet_dataset = ParquetDataSet(["tests/data/mock_urls/*.parquet"])
         data_source = DataSourceNode(ctx, parquet_dataset)
-        partition_dim_a = EvenlyDistributedPartitionNode(
-            ctx, (data_source,), npartitions=parquet_dataset.num_files, dimension="A"
-        )
+        partition_dim_a = EvenlyDistributedPartitionNode(ctx, (data_source,), npartitions=parquet_dataset.num_files, dimension="A")
         partition_dim_a2 = EvenlyDistributedPartitionNode(
             ctx,
             (data_source,),
@@ -94,9 +80,7 @@ class TestLogicalPlan(TestFabric, unittest.TestCase):
         )
         plan = LogicalPlan(
             ctx,
-            DataSetPartitionNode(
-                ctx, (join_two_inputs1, join_two_inputs2), npartitions=1
-            ),
+            DataSetPartitionNode(ctx, (join_two_inputs1, join_two_inputs2), npartitions=1),
         )
         logger.info(str(plan))
         with self.assertRaises(AssertionError) as context:

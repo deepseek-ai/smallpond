@@ -85,9 +85,7 @@ class WorkQueueTestBase(object):
     def test_multi_consumers(self):
         numConsumers = 10
         numItems = 200
-        result = self.pool.starmap_async(
-            consumer, [(self.wq, id) for id in range(numConsumers)]
-        )
+        result = self.pool.starmap_async(consumer, [(self.wq, id) for id in range(numConsumers)])
         producer(self.wq, 0, numItems, numConsumers)
 
         logger.info("waiting for result")

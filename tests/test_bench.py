@@ -45,9 +45,7 @@ class TestBench(TestFabric, unittest.TestCase):
         num_sort_partitions = 1 << 3
         for shuffle_engine in ("duckdb", "arrow"):
             for sort_engine in ("duckdb", "arrow", "polars"):
-                with self.subTest(
-                    shuffle_engine=shuffle_engine, sort_engine=sort_engine
-                ):
+                with self.subTest(shuffle_engine=shuffle_engine, sort_engine=sort_engine):
                     ctx = Context()
                     random_records = generate_random_records(
                         ctx,

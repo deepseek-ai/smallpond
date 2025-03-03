@@ -69,9 +69,7 @@ class OutputMsgPythonTask(PythonScriptTask):
         input_datasets: List[DataSet],
         output_path: str,
     ) -> bool:
-        logger.info(
-            f"msg: {self.msg}, num files: {input_datasets[0].num_files}, local gpu ranks: {self.local_gpu_ranks}"
-        )
+        logger.info(f"msg: {self.msg}, num files: {input_datasets[0].num_files}, local gpu ranks: {self.local_gpu_ranks}")
         self.inject_fault()
         return True
 
@@ -105,9 +103,7 @@ class CopyInputArrowNode(ArrowComputeNode):
         super().__init__(ctx, input_deps)
         self.msg = msg
 
-    def process(
-        self, runtime_ctx: RuntimeContext, input_tables: List[arrow.Table]
-    ) -> arrow.Table:
+    def process(self, runtime_ctx: RuntimeContext, input_tables: List[arrow.Table]) -> arrow.Table:
         return copy_input_arrow(runtime_ctx, input_tables, self.msg)
 
 
@@ -117,24 +113,18 @@ class CopyInputStreamNode(ArrowStreamNode):
         super().__init__(ctx, input_deps)
         self.msg = msg
 
-    def process(
-        self, runtime_ctx: RuntimeContext, input_readers: List[arrow.RecordBatchReader]
-    ) -> Iterable[arrow.Table]:
+    def process(self, runtime_ctx: RuntimeContext, input_readers: List[arrow.RecordBatchReader]) -> Iterable[arrow.Table]:
         return copy_input_stream(runtime_ctx, input_readers, self.msg)
 
 
-def copy_input_arrow(
-    runtime_ctx: RuntimeContext, input_tables: List[arrow.Table], msg: str
-) -> arrow.Table:
+def copy_input_arrow(runtime_ctx: RuntimeContext, input_tables: List[arrow.Table], msg: str) -> arrow.Table:
     logger.info(f"msg: {msg}, num rows: {input_tables[0].num_rows}")
     time.sleep(runtime_ctx.secs_executor_probe_interval)
     runtime_ctx.task.inject_fault()
     return input_tables[0]
 
 
-def copy_input_stream(
-    runtime_ctx: RuntimeContext, input_readers: List[arrow.RecordBatchReader], msg: str
-) -> Iterable[arrow.Table]:
+def copy_input_stream(runtime_ctx: RuntimeContext, input_readers: List[arrow.RecordBatchReader], msg: str) -> Iterable[arrow.Table]:
     for index, batch in enumerate(input_readers[0]):
         logger.info(f"msg: {msg}, batch index: {index}, num rows: {batch.num_rows}")
         time.sleep(runtime_ctx.secs_executor_probe_interval)
@@ -146,62 +136,44 @@ def copy_input_stream(
         runtime_ctx.task.inject_fault()
 
 
-def copy_input_batch(
-    runtime_ctx: RuntimeContext, input_batches: List[arrow.Table], msg: str
-) -> arrow.Table:
+def copy_input_batch(runtime_ctx: RuntimeContext, input_batches: List[arrow.Table], msg: str) -> arrow.Table:
     logger.info(f"msg: {msg}, num rows: {input_batches[0].num_rows}")
     time.sleep(runtime_ctx.secs_executor_probe_interval)
     runtime_ctx.task.inject_fault()
     return input_batches[0]
 
 
-def copy_input_data_frame(
-    runtime_ctx: RuntimeContext, input_dfs: List[DataFrame]
-) -> DataFrame:
+def copy_input_data_frame(runtime_ctx: RuntimeContext, input_dfs: List[DataFrame]) -> DataFrame:
     runtime_ctx.task.inject_fault()
     return input_dfs[0]
 
 
-def copy_input_data_frame_batch(
-    runtime_ctx: RuntimeContext, input_dfs: List[DataFrame]
-) -> DataFrame:
+def copy_input_data_frame_batch(runtime_ctx: RuntimeContext, input_dfs: List[DataFrame]) -> DataFrame:
     runtime_ctx.task.inject_fault()
     return input_dfs[0]
 
 
-def merge_input_tables(
-    runtime_ctx: RuntimeContext, input_batches: List[arrow.Table]
-) -> arrow.Table:
+def merge_input_tables(runtime_ctx: RuntimeContext, input_batches: List[arrow.Table]) -> arrow.Table:
     runtime_ctx.task.inject_fault()
     output = arrow.concat_tables(input_batches)
-    logger.info(
-        f"input rows: {[len(batch) for batch in input_batches]}, output rows: {len(output)}"
-    )
+    logger.info(f"input rows: {[len(batch) for batch in input_batches]}, output rows: {len(output)}")
     return output
 
 
-def merge_input_data_frames(
-    runtime_ctx: RuntimeContext, input_dfs: List[DataFrame]
-) -> DataFrame:
+def merge_input_data_frames(runtime_ctx: RuntimeContext, input_dfs: List[DataFrame]) -> DataFrame:
     runtime_ctx.task.inject_fault()
     output = pandas.concat(input_dfs)
-    logger.info(
-        f"input rows: {[len(df) for df in input_dfs]}, output rows: {len(output)}"
-    )
+    logger.info(f"input rows: {[len(df) for df in input_dfs]}, output rows: {len(output)}")
     return output
 
 
-def parse_url(
-    runtime_ctx: RuntimeContext, input_tables: List[arrow.Table]
-) -> arrow.Table:
+def parse_url(runtime_ctx: RuntimeContext, input_tables: List[arrow.Table]) -> arrow.Table:
     urls = input_tables[0].columns[0]
     hosts = [url.as_py().split("/", maxsplit=2)[0] for url in urls]
     return input_tables[0].append_column("host", arrow.array(hosts))
 
 
-def nonzero_exit_code(
-    runtime_ctx: RuntimeContext, input_datasets: List[DataSet], output_path: str
-) -> bool:
+def nonzero_exit_code(runtime_ctx: RuntimeContext, input_datasets: List[DataSet], output_path: str) -> bool:
     import sys
 
     if runtime_ctx.task._memory_boost == 1:
@@ -210,9 +182,7 @@ def nonzero_exit_code(
 
 
 # create an empty file with a fixed name
-def empty_file(
-    runtime_ctx: RuntimeContext, input_datasets: List[DataSet], output_path: str
-) -> bool:
+def empty_file(runtime_ctx: RuntimeContext, input_datasets: List[DataSet], output_path: str) -> bool:
     import os
 
     with open(os.path.join(output_path, "file"), "w") as fout:
@@ -231,9 +201,7 @@ def split_url(urls: arrow.array) -> arrow.array:
     return arrow.array(url_parts, type=arrow.list_(arrow.string()))
 
 
-def choose_random_urls(
-    runtime_ctx: RuntimeContext, input_tables: List[arrow.Table], k: int = 5
-) -> arrow.Table:
+def choose_random_urls(runtime_ctx: RuntimeContext, input_tables: List[arrow.Table], k: int = 5) -> arrow.Table:
     # get the current running task
     runtime_task = runtime_ctx.task
     # access task-specific attributes
@@ -255,16 +223,12 @@ class TestExecution(TestFabric, unittest.TestCase):
     def test_arrow_task(self):
         for use_duckdb_reader in (False, True):
             with self.subTest(use_duckdb_reader=use_duckdb_reader):
-                with tempfile.TemporaryDirectory(
-                    dir=self.output_root_abspath
-                ) as output_dir:
+                with tempfile.TemporaryDirectory(dir=self.output_root_abspath) as output_dir:
                     ctx = Context()
                     dataset = ParquetDataSet(["tests/data/mock_urls/*.parquet"])
                     data_table = dataset.to_arrow_table()
                     data_files = DataSourceNode(ctx, dataset)
-                    data_partitions = DataSetPartitionNode(
-                        ctx, (data_files,), npartitions=7
-                    )
+                    data_partitions = DataSetPartitionNode(ctx, (data_files,), npartitions=7)
                     if use_duckdb_reader:
                         data_partitions = ProjectionNode(
                             ctx,
@@ -274,9 +238,7 @@ class TestExecution(TestFabric, unittest.TestCase):
                     arrow_compute = ArrowComputeNode(
                         ctx,
                         (data_partitions,),
-                        process_func=functools.partial(
-                            copy_input_arrow, msg="arrow compute"
-                        ),
+                        process_func=functools.partial(copy_input_arrow, msg="arrow compute"),
                         use_duckdb_reader=use_duckdb_reader,
                         output_name="arrow_compute",
                         output_path=output_dir,
@@ -285,9 +247,7 @@ class TestExecution(TestFabric, unittest.TestCase):
                     arrow_stream = ArrowStreamNode(
                         ctx,
                         (data_partitions,),
-                        process_func=functools.partial(
-                            copy_input_stream, msg="arrow stream"
-                        ),
+                        process_func=functools.partial(copy_input_stream, msg="arrow stream"),
                         streaming_batch_size=10,
                         secs_checkpoint_interval=0.5,
                         use_duckdb_reader=use_duckdb_reader,
@@ -298,9 +258,7 @@ class TestExecution(TestFabric, unittest.TestCase):
                     arrow_batch = ArrowBatchNode(
                         ctx,
                         (data_partitions,),
-                        process_func=functools.partial(
-                            copy_input_batch, msg="arrow batch"
-                        ),
+                        process_func=functools.partial(copy_input_batch, msg="arrow batch"),
                         streaming_batch_size=10,
                         secs_checkpoint_interval=0.5,
                         use_duckdb_reader=use_duckdb_reader,
@@ -314,12 +272,8 @@ class TestExecution(TestFabric, unittest.TestCase):
                         output_path=output_dir,
                     )
                     plan = LogicalPlan(ctx, data_sink)
-                    exec_plan = self.execute_plan(
-                        plan, fault_inject_prob=0.1, secs_executor_probe_interval=0.5
-                    )
-                    self.assertTrue(
-                        all(map(os.path.exists, exec_plan.final_output.resolved_paths))
-                    )
+                    exec_plan = self.execute_plan(plan, fault_inject_prob=0.1, secs_executor_probe_interval=0.5)
+                    self.assertTrue(all(map(os.path.exists, exec_plan.final_output.resolved_paths)))
                     arrow_compute_output = ParquetDataSet(
                         [os.path.join(output_dir, "arrow_compute", "**/*.parquet")],
                         recursive=True,
@@ -334,21 +288,15 @@ class TestExecution(TestFabric, unittest.TestCase):
                     )
                     self._compare_arrow_tables(
                         data_table,
-                        arrow_compute_output.to_arrow_table().select(
-                            data_table.column_names
-                        ),
+                        arrow_compute_output.to_arrow_table().select(data_table.column_names),
                     )
                     self._compare_arrow_tables(
                         data_table,
-                        arrow_stream_output.to_arrow_table().select(
-                            data_table.column_names
-                        ),
+                        arrow_stream_output.to_arrow_table().select(data_table.column_names),
                     )
                     self._compare_arrow_tables(
                         data_table,
-                        arrow_batch_output.to_arrow_table().select(
-                            data_table.column_names
-                        ),
+                        arrow_batch_output.to_arrow_table().select(data_table.column_names),
                     )
 
     def test_pandas_task(self):
@@ -376,16 +324,10 @@ class TestExecution(TestFabric, unittest.TestCase):
                 output_path=output_dir,
                 cpu_limit=2,
             )
-            data_sink = DataSinkNode(
-                ctx, (pandas_compute, pandas_batch), output_path=output_dir
-            )
+            data_sink = DataSinkNode(ctx, (pandas_compute, pandas_batch), output_path=output_dir)
             plan = LogicalPlan(ctx, data_sink)
-            exec_plan = self.execute_plan(
-                plan, fault_inject_prob=0.1, secs_executor_probe_interval=0.5
-            )
-            self.assertTrue(
-                all(map(os.path.exists, exec_plan.final_output.resolved_paths))
-            )
+            exec_plan = self.execute_plan(plan, fault_inject_prob=0.1, secs_executor_probe_interval=0.5)
+            self.assertTrue(all(map(os.path.exists, exec_plan.final_output.resolved_paths)))
             pandas_compute_output = ParquetDataSet(
                 [os.path.join(output_dir, "pandas_compute", "**/*.parquet")],
                 recursive=True,
@@ -394,21 +336,15 @@ class TestExecution(TestFabric, unittest.TestCase):
                 [os.path.join(output_dir, "pandas_batch", "**/*.parquet")],
                 recursive=True,
             )
-            self._compare_arrow_tables(
-                data_table, pandas_compute_output.to_arrow_table()
-            )
+            self._compare_arrow_tables(data_table, pandas_compute_output.to_arrow_table())
             self._compare_arrow_tables(data_table, pandas_batch_output.to_arrow_table())
 
     def test_variable_length_input_datasets(self):
         ctx = Context()
         small_dataset = ParquetDataSet(["tests/data/mock_urls/*.parquet"])
         large_dataset = ParquetDataSet(["tests/data/mock_urls/*.parquet"] * 10)
-        small_partitions = DataSetPartitionNode(
-            ctx, (DataSourceNode(ctx, small_dataset),), npartitions=7
-        )
-        large_partitions = DataSetPartitionNode(
-            ctx, (DataSourceNode(ctx, large_dataset),), npartitions=7
-        )
+        small_partitions = DataSetPartitionNode(ctx, (DataSourceNode(ctx, small_dataset),), npartitions=7)
+        large_partitions = DataSetPartitionNode(ctx, (DataSourceNode(ctx, large_dataset),), npartitions=7)
         arrow_batch = ArrowBatchNode(
             ctx,
             (small_partitions, large_partitions),
@@ -428,9 +364,7 @@ class TestExecution(TestFabric, unittest.TestCase):
             cpu_limit=2,
         )
         plan = LogicalPlan(ctx, RootNode(ctx, (arrow_batch, pandas_batch)))
-        exec_plan = self.execute_plan(
-            plan, fault_inject_prob=0.1, secs_executor_probe_interval=0.5
-        )
+        exec_plan = self.execute_plan(plan, fault_inject_prob=0.1, secs_executor_probe_interval=0.5)
         self.assertTrue(all(map(os.path.exists, exec_plan.final_output.resolved_paths)))
         arrow_batch_output = ParquetDataSet(
             [os.path.join(exec_plan.ctx.output_root, "arrow_batch", "**/*.parquet")],
@@ -440,9 +374,7 @@ class TestExecution(TestFabric, unittest.TestCase):
             [os.path.join(exec_plan.ctx.output_root, "pandas_batch", "**/*.parquet")],
             recursive=True,
         )
-        self.assertEqual(
-            small_dataset.num_rows + large_dataset.num_rows, arrow_batch_output.num_rows
-        )
+        self.assertEqual(small_dataset.num_rows + large_dataset.num_rows, arrow_batch_output.num_rows)
         self.assertEqual(
             small_dataset.num_rows + large_dataset.num_rows,
             pandas_batch_output.num_rows,
@@ -453,9 +385,7 @@ class TestExecution(TestFabric, unittest.TestCase):
         # select columns when defining dataset
         dataset = ParquetDataSet(["tests/data/mock_urls/*.parquet"], columns=["url"])
         data_files = DataSourceNode(ctx, dataset)
-        data_partitions = DataSetPartitionNode(
-            ctx, (data_files,), npartitions=3, partition_by_rows=True
-        )
+        data_partitions = DataSetPartitionNode(ctx, (data_files,), npartitions=3, partition_by_rows=True)
         # projection as input of arrow node
         generated_columns = ["filename", "file_row_number"]
         urls_with_host = ArrowComputeNode(
@@ -480,9 +410,7 @@ class TestExecution(TestFabric, unittest.TestCase):
         # unify different schemas
         merged_diff_schemas = ProjectionNode(
             ctx,
-            DataSetPartitionNode(
-                ctx, (distinct_urls_with_host, urls_with_host), npartitions=1
-            ),
+            DataSetPartitionNode(ctx, (distinct_urls_with_host, urls_with_host), npartitions=1),
             union_by_name=True,
         )
         host_partitions = HashPartitionNode(
@@ -513,9 +441,7 @@ class TestExecution(TestFabric, unittest.TestCase):
         ctx = Context()
         dataset = ParquetDataSet(["tests/data/mock_urls/*.parquet"])
         data_files = DataSourceNode(ctx, dataset)
-        data_partitions = DataSetPartitionNode(
-            ctx, (data_files,), npartitions=dataset.num_files
-        )
+        data_partitions = DataSetPartitionNode(ctx, (data_files,), npartitions=dataset.num_files)
         ctx.create_function(
             "split_url",
             split_url,
@@ -537,9 +463,7 @@ class TestExecution(TestFabric, unittest.TestCase):
         npartitions = 1000
         dataset = ParquetDataSet(["tests/data/mock_urls/*.parquet"] * npartitions)
         data_files = DataSourceNode(ctx, dataset)
-        data_partitions = EvenlyDistributedPartitionNode(
-            ctx, (data_files,), npartitions=npartitions
-        )
+        data_partitions = EvenlyDistributedPartitionNode(ctx, (data_files,), npartitions=npartitions)
         output_msg = OutputMsgPythonNode(ctx, (data_partitions,))
         plan = LogicalPlan(ctx, output_msg)
         self.execute_plan(
@@ -552,13 +476,9 @@ class TestExecution(TestFabric, unittest.TestCase):
     def test_many_producers_and_partitions(self):
         ctx = Context()
         npartitions = 10000
-        dataset = ParquetDataSet(
-            ["tests/data/mock_urls/*.parquet"] * (npartitions * 10)
-        )
+        dataset = ParquetDataSet(["tests/data/mock_urls/*.parquet"] * (npartitions * 10))
         data_files = DataSourceNode(ctx, dataset)
-        data_partitions = EvenlyDistributedPartitionNode(
-            ctx, (data_files,), npartitions=npartitions, cpu_limit=1
-        )
+        data_partitions = EvenlyDistributedPartitionNode(ctx, (data_files,), npartitions=npartitions, cpu_limit=1)
         data_partitions.max_num_producer_tasks = 20
         output_msg = OutputMsgPythonNode(ctx, (data_partitions,))
         plan = LogicalPlan(ctx, output_msg)
@@ -573,12 +493,8 @@ class TestExecution(TestFabric, unittest.TestCase):
         ctx = Context()
         dataset = ParquetDataSet(["tests/data/mock_urls/*.parquet"])
         data_files = DataSourceNode(ctx, dataset)
-        data_partitions = DataSetPartitionNode(
-            ctx, (data_files,), npartitions=dataset.num_files
-        )
-        output_msg = OutputMsgPythonNode(
-            ctx, (data_partitions,), cpu_limit=1, gpu_limit=0.5
-        )
+        data_partitions = DataSetPartitionNode(ctx, (data_files,), npartitions=dataset.num_files)
+        output_msg = OutputMsgPythonNode(ctx, (data_partitions,), cpu_limit=1, gpu_limit=0.5)
         plan = LogicalPlan(ctx, output_msg)
         runtime_ctx = RuntimeContext(
             JobId.new(),
@@ -596,9 +512,7 @@ class TestExecution(TestFabric, unittest.TestCase):
         data_files = DataSourceNode(ctx, dataset)
         copy_input_arrow_node = CopyInputArrowNode(ctx, (data_files,), "hello")
         copy_input_stream_node = CopyInputStreamNode(ctx, (data_files,), "hello")
-        output_msg = OutputMsgPythonNode2(
-            ctx, (copy_input_arrow_node, copy_input_stream_node), "hello"
-        )
+        output_msg = OutputMsgPythonNode2(ctx, (copy_input_arrow_node, copy_input_stream_node), "hello")
         plan = LogicalPlan(ctx, output_msg)
         self.execute_plan(plan)
 
@@ -606,9 +520,7 @@ class TestExecution(TestFabric, unittest.TestCase):
         ctx = Context()
         dataset = ParquetDataSet(["tests/data/mock_urls/*.parquet"])
         data_files = DataSourceNode(ctx, dataset)
-        uniq_urls = SqlEngineNode(
-            ctx, (data_files,), r"select distinct * from {0}", memory_limit=2 * MB
-        )
+        uniq_urls = SqlEngineNode(ctx, (data_files,), r"select distinct * from {0}", memory_limit=2 * MB)
         uniq_url_partitions = DataSetPartitionNode(ctx, (uniq_urls,), 2)
         uniq_url_count = SqlEngineNode(
             ctx,
@@ -637,9 +549,7 @@ class TestExecution(TestFabric, unittest.TestCase):
             memory_limit=1 * GB,
         )
         with tempfile.TemporaryDirectory(dir=self.output_root_abspath) as output_dir:
-            data_sink = DataSinkNode(
-                ctx, (arrow_compute, arrow_stream), output_path=output_dir
-            )
+            data_sink = DataSinkNode(ctx, (arrow_compute, arrow_stream), output_path=output_dir)
             plan = LogicalPlan(ctx, data_sink)
             self.execute_plan(
                 plan,
@@ -652,17 +562,11 @@ class TestExecution(TestFabric, unittest.TestCase):
         ctx = Context()
         dataset = ParquetDataSet(["tests/data/mock_urls/*.parquet"])
         data_files = DataSourceNode(ctx, dataset)
-        nonzero_exitcode = PythonScriptNode(
-            ctx, (data_files,), process_func=nonzero_exit_code
-        )
+        nonzero_exitcode = PythonScriptNode(ctx, (data_files,), process_func=nonzero_exit_code)
         plan = LogicalPlan(ctx, nonzero_exitcode)
-        exec_plan = self.execute_plan(
-            plan, num_executors=1, check_result=False, nonzero_exitcode_as_oom=False
-        )
+        exec_plan = self.execute_plan(plan, num_executors=1, check_result=False, nonzero_exitcode_as_oom=False)
         self.assertFalse(exec_plan.successful)
-        exec_plan = self.execute_plan(
-            plan, num_executors=1, check_result=False, nonzero_exitcode_as_oom=True
-        )
+        exec_plan = self.execute_plan(plan, num_executors=1, check_result=False, nonzero_exitcode_as_oom=True)
         self.assertTrue(exec_plan.successful)
 
     def test_manifest_only_data_sink(self):
@@ -675,9 +579,7 @@ class TestExecution(TestFabric, unittest.TestCase):
             dataset = ParquetDataSet(filenames)
             data_files = DataSourceNode(ctx, dataset)
             data_partitions = DataSetPartitionNode(ctx, (data_files,), npartitions=512)
-            data_sink = DataSinkNode(
-                ctx, (data_partitions,), output_path=output_dir, manifest_only=True
-            )
+            data_sink = DataSinkNode(ctx, (data_partitions,), output_path=output_dir, manifest_only=True)
             plan = LogicalPlan(ctx, data_sink)
             self.execute_plan(plan)
 
@@ -734,12 +636,8 @@ class TestExecution(TestFabric, unittest.TestCase):
         dataset = ParquetDataSet(["tests/data/mock_urls/*.parquet"])
         data_files = DataSourceNode(ctx, dataset)
         data_partitions = DataSetPartitionNode(ctx, (data_files,), npartitions=10)
-        url_counts = SqlEngineNode(
-            ctx, (data_partitions,), r"select count(url) as cnt from {0}"
-        )
-        distinct_url_counts = SqlEngineNode(
-            ctx, (data_partitions,), r"select count(distinct url) as cnt from {0}"
-        )
+        url_counts = SqlEngineNode(ctx, (data_partitions,), r"select count(url) as cnt from {0}")
+        distinct_url_counts = SqlEngineNode(ctx, (data_partitions,), r"select count(distinct url) as cnt from {0}")
         merged_counts = DataSetPartitionNode(
             ctx,
             (
@@ -764,9 +662,7 @@ class TestExecution(TestFabric, unittest.TestCase):
             r"select count(url) as cnt from {0}",
             output_name="url_counts",
         )
-        distinct_url_counts = SqlEngineNode(
-            ctx, (data_partitions,), r"select count(distinct url) as cnt from {0}"
-        )
+        distinct_url_counts = SqlEngineNode(ctx, (data_partitions,), r"select count(distinct url) as cnt from {0}")
         merged_counts = DataSetPartitionNode(
             ctx,
             (
@@ -787,24 +683,14 @@ class TestExecution(TestFabric, unittest.TestCase):
         dataset = ParquetDataSet(["tests/data/mock_urls/*.parquet"])
         data_files = DataSourceNode(ctx, dataset)
         data_partitions = DataSetPartitionNode(ctx, (data_files,), npartitions=10)
-        empty_files1 = PythonScriptNode(
-            ctx, (data_partitions,), process_func=empty_file
-        )
-        empty_files2 = PythonScriptNode(
-            ctx, (data_partitions,), process_func=empty_file
-        )
+        empty_files1 = PythonScriptNode(ctx, (data_partitions,), process_func=empty_file)
+        empty_files2 = PythonScriptNode(ctx, (data_partitions,), process_func=empty_file)
         link_path = os.path.join(self.runtime_ctx.output_root, "link")
         copy_path = os.path.join(self.runtime_ctx.output_root, "copy")
         copy_input_path = os.path.join(self.runtime_ctx.output_root, "copy_input")
-        data_link = DataSinkNode(
-            ctx, (empty_files1, empty_files2), type="link", output_path=link_path
-        )
-        data_copy = DataSinkNode(
-            ctx, (empty_files1, empty_files2), type="copy", output_path=copy_path
-        )
-        data_copy_input = DataSinkNode(
-            ctx, (data_partitions,), type="copy", output_path=copy_input_path
-        )
+        data_link = DataSinkNode(ctx, (empty_files1, empty_files2), type="link", output_path=link_path)
+        data_copy = DataSinkNode(ctx, (empty_files1, empty_files2), type="copy", output_path=copy_path)
+        data_copy_input = DataSinkNode(ctx, (data_partitions,), type="copy", output_path=copy_input_path)
         plan = LogicalPlan(ctx, RootNode(ctx, (data_link, data_copy, data_copy_input)))
 
         self.execute_plan(plan)
@@ -813,33 +699,19 @@ class TestExecution(TestFabric, unittest.TestCase):
         self.assertEqual(21, len(os.listdir(copy_path)))
         # file name should not be modified if no conflict
         self.assertEqual(
-            set(
-                filename
-                for filename in os.listdir("tests/data/mock_urls")
-                if filename.endswith(".parquet")
-            ),
-            set(
-                filename
-                for filename in os.listdir(copy_input_path)
-                if filename.endswith(".parquet")
-            ),
+            set(filename for filename in os.listdir("tests/data/mock_urls") if filename.endswith(".parquet")),
+            set(filename for filename in os.listdir(copy_input_path) if filename.endswith(".parquet")),
         )
 
     def test_literal_datasets_as_data_sources(self):
         ctx = Context()
         num_rows = 10
         query_dataset = SqlQueryDataSet(f"select i from range({num_rows}) as x(i)")
-        table_dataset = ArrowTableDataSet(
-            arrow.Table.from_arrays([list(range(num_rows))], names=["i"])
-        )
+        table_dataset = ArrowTableDataSet(arrow.Table.from_arrays([list(range(num_rows))], names=["i"]))
         query_source = DataSourceNode(ctx, query_dataset)
         table_source = DataSourceNode(ctx, table_dataset)
-        query_partitions = DataSetPartitionNode(
-            ctx, (query_source,), npartitions=num_rows, partition_by_rows=True
-        )
-        table_partitions = DataSetPartitionNode(
-            ctx, (table_source,), npartitions=num_rows, partition_by_rows=True
-        )
+        query_partitions = DataSetPartitionNode(ctx, (query_source,), npartitions=num_rows, partition_by_rows=True)
+        table_partitions = DataSetPartitionNode(ctx, (table_source,), npartitions=num_rows, partition_by_rows=True)
         joined_rows = SqlEngineNode(
             ctx,
             (query_partitions, table_partitions),

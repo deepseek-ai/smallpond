@@ -25,9 +25,7 @@ class LogDataSetTask(PythonScriptTask):
 
 
 class LogDataSet(PythonScriptNode):
-    def __init__(
-        self, ctx: Context, input_deps: Tuple[Node, ...], num_rows=200, **kwargs
-    ) -> None:
+    def __init__(self, ctx: Context, input_deps: Tuple[Node, ...], num_rows=200, **kwargs) -> None:
         super().__init__(ctx, input_deps, **kwargs)
         self.num_rows = num_rows
 

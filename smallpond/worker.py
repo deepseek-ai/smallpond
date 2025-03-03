@@ -14,9 +14,7 @@ if __name__ == "__main__":
         required=True,
         help="The address of the Ray cluster to connect to",
     )
-    parser.add_argument(
-        "--log_dir", required=True, help="The directory where logs will be stored"
-    )
+    parser.add_argument("--log_dir", required=True, help="The directory where logs will be stored")
     parser.add_argument(
         "--bind_numa_node",
         action="store_true",

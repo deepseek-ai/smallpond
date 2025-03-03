@@ -30,9 +30,7 @@ class TestDataSet(TestFabric, unittest.TestCase):
         dataset = ParquetDataSet([os.path.join(self.output_root_abspath, "*.parquet")])
         self.assertEqual(num_urls, dataset.num_rows)
 
-    def _generate_parquet_dataset(
-        self, output_path, npartitions, num_rows, row_group_size
-    ):
+    def _generate_parquet_dataset(self, output_path, npartitions, num_rows, row_group_size):
         duckdb.sql(
             f"""copy (
                select range as i, range % {npartitions} as partition from range(0, {num_rows}) )
@@ -41,9 +39,7 @@ class TestDataSet(TestFabric, unittest.TestCase):
         )
         return ParquetDataSet([f"{output_path}/**/*.parquet"])
 
-    def _check_partition_datasets(
-        self, orig_dataset: ParquetDataSet, partition_func, npartition
-    ):
+    def _check_partition_datasets(self, orig_dataset: ParquetDataSet, partition_func, npartition):
         # build partitioned datasets
         partitioned_datasets = partition_func(npartition)
         self.assertEqual(npartition, len(partitioned_datasets))
@@ -52,9 +48,7 @@ class TestDataSet(TestFabric, unittest.TestCase):
             sum(dataset.num_rows for dataset in partitioned_datasets),
         )
         # load as arrow table
-        loaded_table = arrow.concat_tables(
-            [dataset.to_arrow_table(max_workers=1) for dataset in partitioned_datasets]
-        )
+        loaded_table = arrow.concat_tables([dataset.to_arrow_table(max_workers=1) for dataset in partitioned_datasets])
         self.assertEqual(orig_dataset.num_rows, loaded_table.num_rows)
         # compare arrow tables
         orig_table = orig_dataset.to_arrow_table(max_workers=1)
@@ -74,9 +68,7 @@ class TestDataSet(TestFabric, unittest.TestCase):
 
     def test_partition_by_files(self):
         output_path = os.path.join(self.output_root_abspath, "test_partition_by_files")
-        orig_dataset = self._generate_parquet_dataset(
-            output_path, npartitions=11, num_rows=170 * 1000, row_group_size=10 * 1000
-        )
+        orig_dataset = self._generate_parquet_dataset(output_path, npartitions=11, num_rows=170 * 1000, row_group_size=10 * 1000)
         num_files = len(orig_dataset.resolved_paths)
         for npartition in range(1, num_files + 1):
             for random_shuffle in (False, True):
@@ -84,17 +76,13 @@ class TestDataSet(TestFabric, unittest.TestCase):
                     orig_dataset.reset(orig_dataset.paths, orig_dataset.root_dir)
                     self._check_partition_datasets(
                         orig_dataset,
-                        lambda n: orig_dataset.partition_by_files(
-                            n, random_shuffle=random_shuffle
-                        ),
+                        lambda n: orig_dataset.partition_by_files(n, random_shuffle=random_shuffle),
                         npartition,
                     )
 
     def test_partition_by_rows(self):
         output_path = os.path.join(self.output_root_abspath, "test_partition_by_rows")
-        orig_dataset = self._generate_parquet_dataset(
-            output_path, npartitions=11, num_rows=170 * 1000, row_group_size=10 * 1000
-        )
+        orig_dataset = self._generate_parquet_dataset(output_path, npartitions=11, num_rows=170 * 1000, row_group_size=10 * 1000)
         num_files = len(orig_dataset.resolved_paths)
         for npartition in range(1, 2 * num_files + 1):
             for random_shuffle in (False, True):
@@ -102,9 +90,7 @@ class TestDataSet(TestFabric, unittest.TestCase):
                     orig_dataset.reset(orig_dataset.paths, orig_dataset.root_dir)
                     self._check_partition_datasets(
                         orig_dataset,
-                        lambda n: orig_dataset.partition_by_rows(
-                            n, random_shuffle=random_shuffle
-                        ),
+                        lambda n: orig_dataset.partition_by_rows(n, random_shuffle=random_shuffle),
                         npartition,
                     )
 
@@ -116,9 +102,7 @@ class TestDataSet(TestFabric, unittest.TestCase):
         self.assertEqual(len(dataset.resolved_paths), len(filenames))
 
     def test_paths_with_char_ranges(self):
-        dataset_with_char_ranges = ParquetDataSet(
-            ["tests/data/arrow/data[0-9].parquet"]
-        )
+        dataset_with_char_ranges = ParquetDataSet(["tests/data/arrow/data[0-9].parquet"])
         dataset_with_wildcards = ParquetDataSet(["tests/data/arrow/*.parquet"])
         self.assertEqual(
             len(dataset_with_char_ranges.resolved_paths),
@@ -126,9 +110,7 @@ class TestDataSet(TestFabric, unittest.TestCase):
         )
 
     def test_to_arrow_table_batch_reader(self):
-        memdb = duckdb.connect(
-            database=":memory:", config={"arrow_large_buffer_size": "true"}
-        )
+        memdb = duckdb.connect(database=":memory:", config={"arrow_large_buffer_size": "true"})
         for dataset_path in (
             "tests/data/arrow/*.parquet",
             "tests/data/large_array/*.parquet",
@@ -137,24 +119,14 @@ class TestDataSet(TestFabric, unittest.TestCase):
                 print(f"dataset_path: {dataset_path}, conn: {conn}")
                 with self.subTest(dataset_path=dataset_path, conn=conn):
                     dataset = ParquetDataSet([dataset_path])
-                    to_batches = dataset.to_arrow_table(
-                        max_workers=1, conn=conn
-                    ).to_batches(max_chunksize=DEFAULT_ROW_GROUP_SIZE * 2)
-                    batch_reader = dataset.to_batch_reader(
-                        batch_size=DEFAULT_ROW_GROUP_SIZE * 2, conn=conn
-                    )
-                    with ConcurrentIter(
-                        batch_reader, max_buffer_size=2
-                    ) as batch_reader:
+                    to_batches = dataset.to_arrow_table(max_workers=1, conn=conn).to_batches(max_chunksize=DEFAULT_ROW_GROUP_SIZE * 2)
+                    batch_reader = dataset.to_batch_reader(batch_size=DEFAULT_ROW_GROUP_SIZE * 2, conn=conn)
+                    with ConcurrentIter(batch_reader, max_buffer_size=2) as batch_reader:
                         for batch_iter in (to_batches, batch_reader):
                             total_num_rows = 0
                             for batch in batch_iter:
-                                print(
-                                    f"batch.num_rows {batch.num_rows}, max_batch_row_size {DEFAULT_ROW_GROUP_SIZE*2}"
-                                )
-                                self.assertLessEqual(
-                                    batch.num_rows, DEFAULT_ROW_GROUP_SIZE * 2
-                                )
+                                print(f"batch.num_rows {batch.num_rows}, max_batch_row_size {DEFAULT_ROW_GROUP_SIZE*2}")
+                                self.assertLessEqual(batch.num_rows, DEFAULT_ROW_GROUP_SIZE * 2)
                                 total_num_rows += batch.num_rows
                             print(f"{dataset_path}: total_num_rows {total_num_rows}")
                             self.assertEqual(total_num_rows, dataset.num_rows)
@@ -167,8 +139,6 @@ def test_arrow_reader(benchmark, reader: str, dataset_path: str):
     dataset = ParquetDataSet([dataset_path])
     conn = None
     if reader == "duckdb":
-        conn = duckdb.connect(
-            database=":memory:", config={"arrow_large_buffer_size": "true"}
-        )
+        conn = duckdb.connect(database=":memory:", config={"arrow_large_buffer_size": "true"})
     benchmark(dataset.to_arrow_table, conn=conn)
     # result: arrow reader is 4x faster than duckdb reader in small dataset, 1.4x faster in large dataset

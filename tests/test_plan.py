@@ -65,6 +65,4 @@ def test_fstest(sp: Session):
 
 
 def test_sort_mock_urls_v2(sp: Session):
-    sort_mock_urls_v2(
-        sp, ["tests/data/mock_urls/*.tsv"], sp._runtime_ctx.output_root, npartitions=3
-    )
+    sort_mock_urls_v2(sp, ["tests/data/mock_urls/*.tsv"], sp._runtime_ctx.output_root, npartitions=3)

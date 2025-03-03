@@ -20,9 +20,7 @@ from smallpond.logical.node import (
 
 
 class SortUrlsNode(ArrowComputeNode):
-    def process(
-        self, runtime_ctx: RuntimeContext, input_tables: List[arrow.Table]
-    ) -> arrow.Table:
+    def process(self, runtime_ctx: RuntimeContext, input_tables: List[arrow.Table]) -> arrow.Table:
         logging.info(f"sorting urls by 'host', table shape: {input_tables[0].shape}")
         return input_tables[0].sort_by("host")
 
@@ -90,9 +88,7 @@ def sort_mock_urls(
 
 def main():
     driver = Driver()
-    driver.add_argument(
-        "-i", "--input_paths", nargs="+", default=["tests/data/mock_urls/*.tsv"]
-    )
+    driver.add_argument("-i", "--input_paths", nargs="+", default=["tests/data/mock_urls/*.tsv"])
     driver.add_argument("-n", "--npartitions", type=int, default=10)
     driver.add_argument("-e", "--engine_type", default="duckdb")
 

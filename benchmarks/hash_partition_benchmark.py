@@ -70,18 +70,12 @@ def main():
     driver.add_argument("-i", "--input_paths", nargs="+", required=True)
     driver.add_argument("-n", "--npartitions", type=int, default=None)
     driver.add_argument("-c", "--hash_columns", nargs="+", required=True)
-    driver.add_argument(
-        "-e", "--engine_type", default="duckdb", choices=("duckdb", "arrow")
-    )
+    driver.add_argument("-e", "--engine_type", default="duckdb", choices=("duckdb", "arrow"))
     driver.add_argument("-S", "--partition_stats", action="store_true")
     driver.add_argument("-W", "--use_parquet_writer", action="store_true")
     driver.add_argument("-H", "--hive_partitioning", action="store_true")
-    driver.add_argument(
-        "-C", "--cpu_limit", type=int, default=HashPartitionNode.default_cpu_limit
-    )
-    driver.add_argument(
-        "-M", "--memory_limit", type=int, default=HashPartitionNode.default_memory_limit
-    )
+    driver.add_argument("-C", "--cpu_limit", type=int, default=HashPartitionNode.default_cpu_limit)
+    driver.add_argument("-M", "--memory_limit", type=int, default=HashPartitionNode.default_memory_limit)
     driver.add_argument("-NC", "--cpus_per_node", type=int, default=192)
     driver.add_argument("-NM", "--memory_per_node", type=int, default=2000 * GB)
 

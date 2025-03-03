@@ -35,9 +35,7 @@ class SimplePoolTask(object):
     def join(self, timeout=None):
         self.proc.join(timeout)
         if not self.ready() and timeout is not None:
-            logger.warning(
-                f"worker process {self.proc.name}({self.proc.pid}) does not exit after {timeout} secs, stopping it"
-            )
+            logger.warning(f"worker process {self.proc.name}({self.proc.pid}) does not exit after {timeout} secs, stopping it")
             self.terminate()
             self.proc.join()
 
@@ -45,17 +43,11 @@ class SimplePoolTask(object):
         return self.proc.pid and not self.proc.is_alive()
 
     def exitcode(self):
-        assert (
-            self.ready()
-        ), f"worker process {self.proc.name}({self.proc.pid}) has not exited yet"
+        assert self.ready(), f"worker process {self.proc.name}({self.proc.pid}) has not exited yet"
         if self.stopping:
-            logger.info(
-                f"worker process stopped: {self.proc.name}({self.proc.pid}), exitcode: {self.proc.exitcode}"
-            )
+            logger.info(f"worker process stopped: {self.proc.name}({self.proc.pid}), exitcode: {self.proc.exitcode}")
         elif self.proc.exitcode != 0:
-            logger.error(
-                f"worker process crashed: {self.proc.name}({self.proc.pid}), exitcode: {self.proc.exitcode}"
-            )
+            logger.error(f"worker process crashed: {self.proc.name}({self.proc.pid}), exitcode: {self.proc.exitcode}")
         return self.proc.exitcode
 
 
@@ -79,9 +71,7 @@ class SimplePool(object):
     def update_queue(self):
         self.running_tasks = [t for t in self.running_tasks if not t.ready()]
         tasks_to_run = self.queued_tasks[: self.pool_size - len(self.running_tasks)]
-        self.queued_tasks = self.queued_tasks[
-            self.pool_size - len(self.running_tasks) :
-        ]
+        self.queued_tasks = self.queued_tasks[self.pool_size - len(self.running_tasks) :]
         for task in tasks_to_run:
             task.start()
         self.running_tasks += tasks_to_run
@@ -97,9 +87,7 @@ class Executor(object):
     The task executor.
     """
 
-    def __init__(
-        self, ctx: RuntimeContext, id: str, wq: WorkQueue, cq: WorkQueue
-    ) -> None:
+    def __init__(self, ctx: RuntimeContext, id: str, wq: WorkQueue, cq: WorkQueue) -> None:
         self.ctx = ctx
         self.id = id
         self.wq = wq
@@ -135,9 +123,7 @@ class Executor(object):
     def process_work(item: WorkItem, cq: WorkQueue):
         item.exec(cq)
         cq.push(item)
-        logger.info(
-            f"finished work: {repr(item)}, status: {item.status}, elapsed time: {item.elapsed_time:.3f} secs"
-        )
+        logger.info(f"finished work: {repr(item)}, status: {item.status}, elapsed time: {item.elapsed_time:.3f} secs")
         logger.complete()
 
     # for test
@@ -146,16 +132,12 @@ class Executor(object):
 
     # for test
     def skip_probes(self, epochs: int):
-        self.wq.push(
-            Probe(self.ctx, f".FalseFail-{self.id}", epoch=0, epochs_to_skip=epochs)
-        )
+        self.wq.push(Probe(self.ctx, f".FalseFail-{self.id}", epoch=0, epochs_to_skip=epochs))
 
     @logger.catch(reraise=True, message="executor terminated unexpectedly")
     def run(self) -> bool:
         mp.current_process().name = "ExecutorMainProcess"
-        logger.info(
-            f"start to run executor {self.id} on numa node #{self.ctx.numa_node_id} of {socket.gethostname()}"
-        )
+        logger.info(f"start to run executor {self.id} on numa node #{self.ctx.numa_node_id} of {socket.gethostname()}")
 
         with SimplePool(self.ctx.usable_cpu_count + 1) as pool:
             retval = self.exec_loop(pool)
@@ -173,34 +155,20 @@ class Executor(object):
             try:
                 items = self.wq.pop(count=self.ctx.usable_cpu_count)
             except Exception as ex:
-                logger.opt(exception=ex).critical(
-                    f"failed to pop from work queue: {self.wq}"
-                )
+                logger.opt(exception=ex).critical(f"failed to pop from work queue: {self.wq}")
                 self.running = False
                 items = []
 
             if not items:
                 secs_quiet_period = time.time() - latest_probe_time
-                if (
-                    secs_quiet_period > self.ctx.secs_executor_probe_interval * 2
-                    and os.path.exists(self.ctx.job_status_path)
-                ):
+                if secs_quiet_period > self.ctx.secs_executor_probe_interval * 2 and os.path.exists(self.ctx.job_status_path):
                     with open(self.ctx.job_status_path) as status_file:
-                        if (
-                            status := status_file.read().strip()
-                        ) and not status.startswith("running"):
-                            logger.critical(
-                                f"job scheduler already stopped: {status}, stopping executor"
-                            )
+                        if (status := status_file.read().strip()) and not status.startswith("running"):
+                            logger.critical(f"job scheduler already stopped: {status}, stopping executor")
                             self.running = False
                             break
-                if (
-                    secs_quiet_period > self.ctx.secs_executor_probe_timeout * 2
-                    and not pytest_running()
-                ):
-                    logger.critical(
-                        f"no probe received for {secs_quiet_period:.1f} secs, stopping executor"
-                    )
+                if secs_quiet_period > self.ctx.secs_executor_probe_timeout * 2 and not pytest_running():
+                    logger.critical(f"no probe received for {secs_quiet_period:.1f} secs, stopping executor")
                     self.running = False
                     break
                 # no pending works, so wait a few seconds before checking results
@@ -216,9 +184,7 @@ class Executor(object):
                 if isinstance(item, StopWorkItem):
                     running_work = self.running_works.get(item.work_to_stop, None)
                     if running_work is None:
-                        logger.debug(
-                            f"cannot find {item.work_to_stop} in running works of {self.id}"
-                        )
+                        logger.debug(f"cannot find {item.work_to_stop} in running works of {self.id}")
                         self.cq.push(item)
                     else:
                         logger.info(f"stopping work: {item.work_to_stop}")
@@ -250,20 +216,14 @@ class Executor(object):
                         self.collect_finished_works()
                         time.sleep(self.ctx.secs_wq_poll_interval)
                     item._local_gpu = granted_gpus
-                    logger.info(
-                        f"{repr(item)} is assigned to run on GPU: { {gpu.id: quota for gpu, quota in item._local_gpu.items()} }"
-                    )
+                    logger.info(f"{repr(item)} is assigned to run on GPU: { {gpu.id: quota for gpu, quota in item._local_gpu.items()} }")
 
                 # enqueue work item to the pool
                 self.running_works[item.key] = (
-                    pool.apply_async(
-                        func=Executor.process_work, args=(item, self.cq), name=item.key
-                    ),
+                    pool.apply_async(func=Executor.process_work, args=(item, self.cq), name=item.key),
                     item,
                 )
-                logger.info(
-                    f"started work: {repr(item)}, {len(self.running_works)} running works: {list(self.running_works.keys())[:10]}..."
-                )
+                logger.info(f"started work: {repr(item)}, {len(self.running_works)} running works: {list(self.running_works.keys())[:10]}...")
 
             # start to run works
             pool.update_queue()
@@ -287,15 +247,11 @@ class Executor(object):
                 work.join()
             if (exitcode := work.exitcode()) != 0:
                 item.status = WorkStatus.CRASHED
-                item.exception = NonzeroExitCode(
-                    f"worker process {work.proc.name}({work.proc.pid}) exited with non-zero code {exitcode}"
-                )
+                item.exception = NonzeroExitCode(f"worker process {work.proc.name}({work.proc.pid}) exited with non-zero code {exitcode}")
                 try:
                     self.cq.push(item)
                 except Exception as ex:
-                    logger.opt(exception=ex).critical(
-                        f"failed to push into completion queue: {self.cq}"
-                    )
+                    logger.opt(exception=ex).critical(f"failed to push into completion queue: {self.cq}")
                     self.running = False
             finished_works.append(item)
 
@@ -304,9 +260,7 @@ class Executor(object):
             self.running_works.pop(item.key)
             if item._local_gpu:
                 self.release_gpu(item._local_gpu)
-                logger.info(
-                    f"{repr(item)} released GPU: { {gpu.id: quota for gpu, quota in item._local_gpu.items()} }"
-                )
+                logger.info(f"{repr(item)} released GPU: { {gpu.id: quota for gpu, quota in item._local_gpu.items()} }")
 
     def acquire_gpu(self, quota: float) -> Dict[GPU, float]:
         """
@@ -336,6 +290,4 @@ class Executor(object):
         """
         for gpu, quota in gpus.items():
             self.local_gpus[gpu] += quota
-            assert (
-                self.local_gpus[gpu] <= 1.0
-            ), f"GPU {gpu} quota is greater than 1.0: {self.local_gpus[gpu]}"
+            assert self.local_gpus[gpu] <= 1.0, f"GPU {gpu} quota is greater than 1.0: {self.local_gpus[gpu]}"

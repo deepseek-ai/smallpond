@@ -44,11 +44,7 @@ class RowRange:
     @property
     def estimated_data_size(self) -> int:
         """The estimated uncompressed data size in bytes."""
-        return (
-            self.data_size * self.num_rows // self.file_num_rows
-            if self.file_num_rows > 0
-            else 0
-        )
+        return self.data_size * self.num_rows // self.file_num_rows if self.file_num_rows > 0 else 0
 
     def take(self, num_rows: int) -> "RowRange":
         """
@@ -62,9 +58,7 @@ class RowRange:
         return head
 
     @staticmethod
-    def partition_by_rows(
-        row_ranges: List["RowRange"], npartition: int
-    ) -> List[List["RowRange"]]:
+    def partition_by_rows(row_ranges: List["RowRange"], npartition: int) -> List[List["RowRange"]]:
         """Evenly split a list of row ranges into `npartition` partitions."""
         # NOTE: `row_ranges` should not be modified by this function
         row_ranges = copy.deepcopy(row_ranges)
@@ -128,9 +122,7 @@ def convert_types_to_large_string(schema: arrow.Schema) -> arrow.Schema:
     new_fields = []
     for field in schema:
         new_type = convert_type_to_large(field.type)
-        new_field = arrow.field(
-            field.name, new_type, nullable=field.nullable, metadata=field.metadata
-        )
+        new_field = arrow.field(field.name, new_type, nullable=field.nullable, metadata=field.metadata)
         new_fields.append(new_field)
     return arrow.schema(new_fields, metadata=schema.metadata)
 
@@ -151,11 +143,7 @@ def filter_schema(
     if included_cols is not None:
         fields = [schema.field(col_name) for col_name in included_cols]
     if excluded_cols is not None:
-        fields = [
-            schema.field(col_name)
-            for col_name in schema.names
-            if col_name not in excluded_cols
-        ]
+        fields = [schema.field(col_name) for col_name in schema.names if col_name not in excluded_cols]
     return arrow.schema(fields, metadata=schema.metadata)
 
 
@@ -172,9 +160,7 @@ def _iter_record_batches(
     current_offset = 0
     required_l, required_r = offset, offset + length
 
-    for batch in file.iter_batches(
-        batch_size=batch_size, columns=columns, use_threads=False
-    ):
+    for batch in file.iter_batches(batch_size=batch_size, columns=columns, use_threads=False):
         current_l, current_r = current_offset, current_offset + batch.num_rows
         # check if intersection is null
         if current_r <= required_l:
@@ -184,9 +170,7 @@ def _iter_record_batches(
         else:
             intersection_l = max(required_l, current_l)
             intersection_r = min(required_r, current_r)
-            trimmed = batch.slice(
-                intersection_l - current_offset, intersection_r - intersection_l
-            )
+            trimmed = batch.slice(intersection_l - current_offset, intersection_r - intersection_l)
             assert (
                 trimmed.num_rows == intersection_r - intersection_l
             ), f"trimmed.num_rows {trimmed.num_rows} != batch_length {intersection_r - intersection_l}"
@@ -204,9 +188,7 @@ def build_batch_reader_from_files(
 ) -> arrow.RecordBatchReader:
     assert len(paths_or_ranges) > 0, "paths_or_ranges must be a non-empty list"
     schema = _read_schema_from_file(paths_or_ranges[0], columns, filesystem)
-    iterator = _iter_record_batches_from_files(
-        paths_or_ranges, columns, batch_size, max_batch_byte_size, filesystem
-    )
+    iterator = _iter_record_batches_from_files(paths_or_ranges, columns, batch_size, max_batch_byte_size, filesystem)
     return arrow.RecordBatchReader.from_batches(schema, iterator)
 
 
@@ -216,9 +198,7 @@ def _read_schema_from_file(
     filesystem: fsspec.AbstractFileSystem = None,
 ) -> arrow.Schema:
     path = path_or_range.path if isinstance(path_or_range, RowRange) else path_or_range
-    schema = parquet.read_schema(
-        filesystem.unstrip_protocol(path) if filesystem else path, filesystem=filesystem
-    )
+    schema = parquet.read_schema(filesystem.unstrip_protocol(path) if filesystem else path, filesystem=filesystem)
     if columns is not None:
         assert all(
             c in schema.names for c in columns
@@ -253,9 +233,7 @@ def _iter_record_batches_from_files(
         yield from table.combine_chunks().to_batches(batch_size)
 
     for path_or_range in paths_or_ranges:
-        path = (
-            path_or_range.path if isinstance(path_or_range, RowRange) else path_or_range
-        )
+        path = path_or_range.path if isinstance(path_or_range, RowRange) else path_or_range
         with parquet.ParquetFile(
             filesystem.unstrip_protocol(path) if filesystem else path,
             buffer_size=16 * MB,
@@ -265,23 +243,16 @@ def _iter_record_batches_from_files(
                 offset, length = path_or_range.begin, path_or_range.num_rows
             else:
                 offset, length = 0, file.metadata.num_rows
-            for batch in _iter_record_batches(
-                file, columns, offset, length, batch_size
-            ):
+            for batch in _iter_record_batches(file, columns, offset, length, batch_size):
                 batch_size_exceeded = batch.num_rows + buffered_rows >= batch_size
-                batch_byte_size_exceeded = (
-                    max_batch_byte_size is not None
-                    and batch.nbytes + buffered_bytes >= max_batch_byte_size
-                )
+                batch_byte_size_exceeded = max_batch_byte_size is not None and batch.nbytes + buffered_bytes >= max_batch_byte_size
                 if not batch_size_exceeded and not batch_byte_size_exceeded:
                     buffered_batches.append(batch)
                     buffered_rows += batch.num_rows
                     buffered_bytes += batch.nbytes
                 else:
                     if batch_size_exceeded:
-                        buffered_batches.append(
-                            batch.slice(0, batch_size - buffered_rows)
-                        )
+                        buffered_batches.append(batch.slice(0, batch_size - buffered_rows))
                         batch = batch.slice(batch_size - buffered_rows)
                     if buffered_batches:
                         yield from combine_buffered_batches(buffered_batches)
@@ -298,9 +269,7 @@ def read_parquet_files_into_table(
     columns: List[str] = None,
     filesystem: fsspec.AbstractFileSystem = None,
 ) -> arrow.Table:
-    batch_reader = build_batch_reader_from_files(
-        paths_or_ranges, columns=columns, filesystem=filesystem
-    )
+    batch_reader = build_batch_reader_from_files(paths_or_ranges, columns=columns, filesystem=filesystem)
     return batch_reader.read_all()
 
 
@@ -312,37 +281,22 @@ def load_from_parquet_files(
 ) -> arrow.Table:
     start_time = time.time()
     assert len(paths_or_ranges) > 0, "paths_or_ranges must be a non-empty list"
-    paths = [
-        path_or_range.path if isinstance(path_or_range, RowRange) else path_or_range
-        for path_or_range in paths_or_ranges
-    ]
+    paths = [path_or_range.path if isinstance(path_or_range, RowRange) else path_or_range for path_or_range in paths_or_ranges]
     total_compressed_size = sum(
-        (
-            path_or_range.data_size
-            if isinstance(path_or_range, RowRange)
-            else os.path.getsize(path_or_range)
-        )
-        for path_or_range in paths_or_ranges
+        (path_or_range.data_size if isinstance(path_or_range, RowRange) else os.path.getsize(path_or_range)) for path_or_range in paths_or_ranges
     )
-    logger.debug(
-        f"loading {len(paths)} parquet files (compressed size: {total_compressed_size/MB:.3f}MB): {paths[:3]}..."
-    )
+    logger.debug(f"loading {len(paths)} parquet files (compressed size: {total_compressed_size/MB:.3f}MB): {paths[:3]}...")
     num_workers = min(len(paths), max_workers)
     with ThreadPoolExecutor(num_workers) as pool:
         running_works = [
-            pool.submit(read_parquet_files_into_table, batch, columns, filesystem)
-            for batch in split_into_rows(paths_or_ranges, num_workers)
+            pool.submit(read_parquet_files_into_table, batch, columns, filesystem) for batch in split_into_rows(paths_or_ranges, num_workers)
         ]
         tables = [work.result() for work in running_works]
-        logger.debug(
-            f"collected {len(tables)} tables from: {paths[:3]}... (elapsed: {time.time() - start_time:.3f} secs)"
-        )
+        logger.debug(f"collected {len(tables)} tables from: {paths[:3]}... (elapsed: {time.time() - start_time:.3f} secs)")
         return arrow.concat_tables(tables)
 
 
-def parquet_write_table(
-    table, where, filesystem: fsspec.AbstractFileSystem = None, **write_table_args
-) -> int:
+def parquet_write_table(table, where, filesystem: fsspec.AbstractFileSystem = None, **write_table_args) -> int:
     if filesystem is not None:
         return parquet.write_table(
             table,
@@ -388,10 +342,7 @@ def dump_to_parquet_files(
     num_workers = min(len(batches), max_workers)
     num_tables = max(math.ceil(table.nbytes / MAX_PARQUET_FILE_BYTES), num_workers)
     logger.debug(f"evenly distributed {len(batches)} batches into {num_tables} files")
-    tables = [
-        arrow.Table.from_batches(batch, table.schema)
-        for batch in split_into_rows(batches, num_tables)
-    ]
+    tables = [arrow.Table.from_batches(batch, table.schema) for batch in split_into_rows(batches, num_tables)]
     assert sum(t.num_rows for t in tables) == table.num_rows
 
     logger.debug(f"writing {len(tables)} files to {output_dir}")
@@ -413,7 +364,5 @@ def dump_to_parquet_files(
         ]
         assert all(work.result() or True for work in running_works)
 
-    logger.debug(
-        f"finished writing {len(tables)} files to {output_dir} (elapsed: {time.time() - start_time:.3f} secs)"
-    )
+    logger.debug(f"finished writing {len(tables)} files to {output_dir} (elapsed: {time.time() - start_time:.3f} secs)")
     return True

@@ -32,9 +32,7 @@ class Optimizer(LogicalPlanVisitor[Node]):
 
     def visit_query_engine_node(self, node: SqlEngineNode, depth: int) -> Node:
         # fuse consecutive SqlEngineNodes
-        if len(node.input_deps) == 1 and isinstance(
-            child := self.visit(node.input_deps[0], depth + 1), SqlEngineNode
-        ):
+        if len(node.input_deps) == 1 and isinstance(child := self.visit(node.input_deps[0], depth + 1), SqlEngineNode):
             fused = copy.copy(node)
             fused.input_deps = child.input_deps
             fused.udfs = node.udfs + child.udfs
@@ -52,8 +50,6 @@ class Optimizer(LogicalPlanVisitor[Node]):
             #  node.sql_queries = ["select a, b from {0}"]
             # fused.sql_queries = ["select a, b from (select * from {0})"]
             # ```
-            fused.sql_queries = child.sql_queries[:-1] + [
-                query.format(f"({child.sql_queries[-1]})") for query in node.sql_queries
-            ]
+            fused.sql_queries = child.sql_queries[:-1] + [query.format(f"({child.sql_queries[-1]})") for query in node.sql_queries]
             return fused
         return self.generic_visit(node, depth)

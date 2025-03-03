@@ -264,6 +264,4 @@ def udf(
 
     See `Context.create_function` for more details.
     """
-    return lambda func: UserDefinedFunction(
-        name or func.__name__, func, params, return_type, use_arrow_type
-    )
+    return lambda func: UserDefinedFunction(name or func.__name__, func, params, return_type, use_arrow_type)

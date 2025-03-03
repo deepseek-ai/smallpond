@@ -54,9 +54,7 @@ class ExecutorState(Enum):
 
 
 class RemoteExecutor(object):
-    def __init__(
-        self, ctx: RuntimeContext, id: str, wq: WorkQueue, cq: WorkQueue, init_epoch=0
-    ) -> None:
+    def __init__(self, ctx: RuntimeContext, id: str, wq: WorkQueue, cq: WorkQueue, init_epoch=0) -> None:
         self.ctx = ctx
         self.id = id
         self.wq = wq
@@ -79,9 +77,7 @@ state={self.state}, probe={self.last_acked_probe}"
         return f"RemoteExecutor({self.id}):{self.state}"
 
     @staticmethod
-    def create(
-        ctx: RuntimeContext, id: str, queue_dir: str, init_epoch=0
-    ) -> "RemoteExecutor":
+    def create(ctx: RuntimeContext, id: str, queue_dir: str, init_epoch=0) -> "RemoteExecutor":
         wq = WorkQueueOnFilesystem(os.path.join(queue_dir, "wq"))
         cq = WorkQueueOnFilesystem(os.path.join(queue_dir, "cq"))
         return RemoteExecutor(ctx, id, wq, cq, init_epoch)
@@ -173,9 +169,7 @@ state={self.state}, probe={self.last_acked_probe}"
         return self.cpu_count - self.cpu_count // 16
 
     def add_running_work(self, item: WorkItem):
-        assert (
-            item.key not in self.running_works
-        ), f"duplicate work item assigned to {repr(self)}: {item.key}"
+        assert item.key not in self.running_works, f"duplicate work item assigned to {repr(self)}: {item.key}"
         self.running_works[item.key] = item
         self._allocated_cpus += item.cpu_limit
         self._allocated_gpus += item.gpu_limit
@@ -219,9 +213,7 @@ state={self.state}, probe={self.last_acked_probe}"
 
     def push(self, item: WorkItem, buffering=False) -> bool:
         if item.key in self.running_works:
-            logger.warning(
-                f"work item {item.key} already exists in running works of {self}"
-            )
+            logger.warning(f"work item {item.key} already exists in running works of {self}")
             return False
         item.start_time = time.time()
         item.exec_id = self.id
@@ -250,9 +242,7 @@ state={self.state}, probe={self.last_acked_probe}"
         elif num_missed_probes > self.ctx.max_num_missed_probes:
             if self.state != ExecutorState.FAIL:
                 self.state = ExecutorState.FAIL
-                logger.error(
-                    f"find failed executor: {self}, missed probes: {num_missed_probes}, current epoch: {current_epoch}"
-                )
+                logger.error(f"find failed executor: {self}, missed probes: {num_missed_probes}, current epoch: {current_epoch}")
                 return True
         elif self.state == ExecutorState.STOPPING:
             if self.stop_request_acked:
@@ -277,9 +267,7 @@ state={self.state}, probe={self.last_acked_probe}"
 
 
 class LocalExecutor(RemoteExecutor):
-    def __init__(
-        self, ctx: RuntimeContext, id: str, wq: WorkQueue, cq: WorkQueue
-    ) -> None:
+    def __init__(self, ctx: RuntimeContext, id: str, wq: WorkQueue, cq: WorkQueue) -> None:
         super().__init__(ctx, id, wq, cq)
         self.work = None
         self.running = False
@@ -321,9 +309,7 @@ class LocalExecutor(RemoteExecutor):
                 if item.gpu_limit > 0:
                     assert len(local_gpus) > 0
                     item._local_gpu = local_gpus[0]
-                    logger.info(
-                        f"{repr(item)} is assigned to run on GPU #{item.local_rank}: {item.local_gpu}"
-                    )
+                    logger.info(f"{repr(item)} is assigned to run on GPU #{item.local_rank}: {item.local_gpu}")
 
                 item = copy.copy(item)
                 item.exec()
@@ -368,9 +354,7 @@ class Scheduler(object):
             self.callback = callback
 
         def __repr__(self) -> str:
-            return (
-                repr(self.callback) if self.callback is not None else super().__repr__()
-            )
+            return repr(self.callback) if self.callback is not None else super().__repr__()
 
         __str__ = __repr__
 
@@ -403,9 +387,7 @@ class Scheduler(object):
         self.stop_executor_on_failure = stop_executor_on_failure
         self.nonzero_exitcode_as_oom = nonzero_exitcode_as_oom
         self.remove_output_root = remove_output_root
-        self.sched_state_observers: List[Scheduler.StateObserver] = (
-            sched_state_observers or []
-        )
+        self.sched_state_observers: List[Scheduler.StateObserver] = sched_state_observers or []
         self.secs_state_notify_interval = self.ctx.secs_executor_probe_interval * 2
         # task states
         self.local_queue: List[Task] = []
@@ -414,11 +396,7 @@ class Scheduler(object):
         self.scheduled_tasks: Dict[TaskRuntimeId, Task] = OrderedDict()
         self.finished_tasks: Dict[TaskRuntimeId, Task] = OrderedDict()
         self.succeeded_tasks: Dict[str, Task] = OrderedDict()
-        self.nontrivial_tasks = dict(
-            (key, task)
-            for (key, task) in self.tasks.items()
-            if not task.exec_on_scheduler
-        )
+        self.nontrivial_tasks = dict((key, task) for (key, task) in self.tasks.items() if not task.exec_on_scheduler)
         self.succeeded_nontrivial_tasks: Dict[str, Task] = OrderedDict()
         # executor pool
         self.local_executor = LocalExecutor.create(self.ctx, "localhost")
@@ -463,18 +441,11 @@ class Scheduler(object):
 
     @property
     def running_works(self) -> Iterable[WorkItem]:
-        return (
-            work
-            for executor in (self.alive_executors + self.local_executors)
-            for work in executor.running_works.values()
-        )
+        return (work for executor in (self.alive_executors + self.local_executors) for work in executor.running_works.values())
 
     @property
     def num_running_works(self) -> int:
-        return sum(
-            len(executor.running_works)
-            for executor in (self.alive_executors + self.local_executors)
-        )
+        return sum(len(executor.running_works) for executor in (self.alive_executors + self.local_executors))
 
     @property
     def num_local_running_works(self) -> int:
@@ -489,11 +460,7 @@ class Scheduler(object):
 
     @property
     def pending_nontrivial_tasks(self) -> Dict[str, Task]:
-        return dict(
-            (key, task)
-            for key, task in self.nontrivial_tasks.items()
-            if key not in self.succeeded_nontrivial_tasks
-        )
+        return dict((key, task) for key, task in self.nontrivial_tasks.items() if key not in self.succeeded_nontrivial_tasks)
 
     @property
     def num_pending_nontrivial_tasks(self) -> int:
@@ -504,33 +471,20 @@ class Scheduler(object):
 
     @property
     def succeeded_task_ids(self) -> Set[TaskRuntimeId]:
-        return set(
-            TaskRuntimeId(task.id, task.sched_epoch, task.retry_count)
-            for task in self.succeeded_tasks.values()
-        )
+        return set(TaskRuntimeId(task.id, task.sched_epoch, task.retry_count) for task in self.succeeded_tasks.values())
 
     @property
     def abandoned_tasks(self) -> List[Task]:
         succeeded_task_ids = self.succeeded_task_ids
-        return [
-            task
-            for task in {**self.scheduled_tasks, **self.finished_tasks}.values()
-            if task.runtime_id not in succeeded_task_ids
-        ]
+        return [task for task in {**self.scheduled_tasks, **self.finished_tasks}.values() if task.runtime_id not in succeeded_task_ids]
 
     @cached_property
     def remote_executors(self) -> List[RemoteExecutor]:
-        return [
-            executor
-            for executor in self.available_executors.values()
-            if not executor.local
-        ]
+        return [executor for executor in self.available_executors.values() if not executor.local]
 
     @cached_property
     def local_executors(self) -> List[RemoteExecutor]:
-        return [
-            executor for executor in self.available_executors.values() if executor.local
-        ]
+        return [executor for executor in self.available_executors.values() if executor.local]
 
     @cached_property
     def working_executors(self) -> List[RemoteExecutor]:
@@ -592,10 +546,7 @@ class Scheduler(object):
     def start_speculative_execution(self):
         for executor in self.working_executors:
             for idx, item in enumerate(executor.running_works.values()):
-                aggressive_retry = (
-                    self.aggressive_speculative_exec
-                    and len(self.good_executors) >= self.ctx.num_executors
-                )
+                aggressive_retry = self.aggressive_speculative_exec and len(self.good_executors) >= self.ctx.num_executors
                 short_sched_queue = len(self.sched_queue) < len(self.good_executors)
                 if (
                     isinstance(item, Task)
@@ -603,8 +554,7 @@ class Scheduler(object):
                     and item.allow_speculative_exec
                     and item.retry_count < self.max_retry_count
                     and item.retry_count == self.tasks[item.key].retry_count
-                    and (logical_node := self.logical_nodes.get(item.node_id, None))
-                    is not None
+                    and (logical_node := self.logical_nodes.get(item.node_id, None)) is not None
                 ):
                     perf_stats = logical_node.get_perf_stats("elapsed wall time (secs)")
                     if perf_stats is not None and perf_stats.cnt >= 20:
@@ -639,12 +589,8 @@ class Scheduler(object):
                     if entry.is_dir():
                         _, exec_id = os.path.split(entry.path)
                         if exec_id not in self.available_executors:
-                            self.available_executors[exec_id] = RemoteExecutor.create(
-                                self.ctx, exec_id, entry.path, self.probe_epoch
-                            )
-                            logger.info(
-                                f"find a new executor #{len(self.available_executors)}: {self.available_executors[exec_id]}"
-                            )
+                            self.available_executors[exec_id] = RemoteExecutor.create(self.ctx, exec_id, entry.path, self.probe_epoch)
+                            logger.info(f"find a new executor #{len(self.available_executors)}: {self.available_executors[exec_id]}")
                             self.clear_cached_executor_lists()
             # start a new probe epoch
             self.last_executor_probe_time = time.time()
@@ -668,9 +614,7 @@ class Scheduler(object):
                     item.status = WorkStatus.EXEC_FAILED
                     item.finish_time = time.time()
                     if isinstance(item, Task) and item.key not in self.succeeded_tasks:
-                        logger.warning(
-                            f"reschedule {repr(item)} on failed executor: {repr(executor)}"
-                        )
+                        logger.warning(f"reschedule {repr(item)} on failed executor: {repr(executor)}")
                         self.try_enqueue(self.get_retry_task(item.key))
 
         if any(executor_state_changed):
@@ -690,9 +634,7 @@ class Scheduler(object):
         # remove the reference to input deps
         task.input_deps = {dep_key: None for dep_key in task.input_deps}
         # feed input datasets
-        task.input_datasets = [
-            self.succeeded_tasks[dep_key].output for dep_key in task.input_deps
-        ]
+        task.input_datasets = [self.succeeded_tasks[dep_key].output for dep_key in task.input_deps]
         task.sched_epoch = self.sched_epoch
         return task
 
@@ -713,9 +655,7 @@ class Scheduler(object):
         task.dataset = finished_task.dataset
 
     def get_runnable_tasks(self, finished_task: Task) -> Iterable[Task]:
-        assert (
-            finished_task.status == WorkStatus.SUCCEED
-        ), f"task not succeeded: {finished_task}"
+        assert finished_task.status == WorkStatus.SUCCEED, f"task not succeeded: {finished_task}"
         for output_key in finished_task.output_deps:
             output_dep = self.tasks[output_key]
             if all(key in self.succeeded_tasks for key in output_dep.input_deps):
@@ -730,14 +670,8 @@ class Scheduler(object):
         for executor in self.remote_executors:
             running_task = executor.running_works.get(task_key, None)
             if running_task is not None:
-                logger.info(
-                    f"try to stop {repr(running_task)} running on {repr(executor)}"
-                )
-                executor.wq.push(
-                    StopWorkItem(
-                        f".StopWorkItem-{repr(running_task)}", running_task.key
-                    )
-                )
+                logger.info(f"try to stop {repr(running_task)} running on {repr(executor)}")
+                executor.wq.push(StopWorkItem(f".StopWorkItem-{repr(running_task)}", running_task.key))
 
     def try_relax_memory_limit(self, task: Task, executor: RemoteExecutor) -> bool:
         if task.memory_limit >= executor.memory_size:
@@ -745,9 +679,7 @@ class Scheduler(object):
             return False
         relaxed_memory_limit = min(executor.memory_size, task.memory_limit * 2)
         task._memory_boost = relaxed_memory_limit / task._memory_limit
-        logger.warning(
-            f"relax memory limit of {task.key} to {task.memory_limit/GB:.3f}GB and retry ..."
-        )
+        logger.warning(f"relax memory limit of {task.key} to {task.memory_limit/GB:.3f}GB and retry ...")
         return True
 
     def try_boost_resource(self, item: WorkItem, executor: RemoteExecutor):
@@ -777,9 +709,7 @@ class Scheduler(object):
             if item._cpu_limit < boost_cpu or item._memory_limit < boost_mem:
                 item._cpu_boost = boost_cpu / item._cpu_limit
                 item._memory_boost = boost_mem / item._memory_limit
-                logger.info(
-                    f"boost resource usage of {repr(item)}: {item.cpu_limit} CPUs, {item.memory_limit/GB:.3f}GB"
-                )
+                logger.info(f"boost resource usage of {repr(item)}: {item.cpu_limit} CPUs, {item.memory_limit/GB:.3f}GB")
 
     def get_retry_task(self, key: str) -> Task:
         task = self.tasks[key]
@@ -794,9 +724,7 @@ class Scheduler(object):
         remove_path(self.ctx.staging_root)
 
         if abandoned_tasks := self.abandoned_tasks:
-            logger.info(
-                f"removing outputs of {len(abandoned_tasks)} abandoned tasks: {abandoned_tasks[:3]} ..."
-            )
+            logger.info(f"removing outputs of {len(abandoned_tasks)} abandoned tasks: {abandoned_tasks[:3]} ...")
             assert list(pool.map(lambda t: t.clean_output(force=True), abandoned_tasks))
 
     @logger.catch(reraise=pytest_running(), message="failed to export task metrics")
@@ -825,15 +753,9 @@ class Scheduler(object):
             buffering=32 * MB,
         )
 
-        task_props = arrow.array(
-            pristine_attrs_dict(task) for task in self.finished_tasks.values()
-        )
-        partition_infos = arrow.array(
-            task.partition_infos_as_dict for task in self.finished_tasks.values()
-        )
-        perf_metrics = arrow.array(
-            dict(task.perf_metrics) for task in self.finished_tasks.values()
-        )
+        task_props = arrow.array(pristine_attrs_dict(task) for task in self.finished_tasks.values())
+        partition_infos = arrow.array(task.partition_infos_as_dict for task in self.finished_tasks.values())
+        perf_metrics = arrow.array(dict(task.perf_metrics) for task in self.finished_tasks.values())
         task_metrics = arrow.Table.from_arrays(
             [task_props, partition_infos, perf_metrics],
             names=["task_props", "partition_infos", "perf_metrics"],
@@ -862,12 +784,7 @@ class Scheduler(object):
             [
                 dict(
                     task=repr(task),
-                    node=(
-                        repr(node)
-                        if (node := self.logical_nodes.get(task.node_id, None))
-                        is not None
-                        else "StandaloneTasks"
-                    ),
+                    node=(repr(node) if (node := self.logical_nodes.get(task.node_id, None)) is not None else "StandaloneTasks"),
                     status=str(task.status),
                     executor=task.exec_id,
                     start_time=datetime.fromtimestamp(task.start_time),
@@ -925,23 +842,16 @@ class Scheduler(object):
             fig_filename, _ = fig_title.split(" - ", maxsplit=1)
             fig_filename += ".html"
             fig_path = os.path.join(self.ctx.log_root, fig_filename)
-            fig.update_yaxes(
-                autorange="reversed"
-            )  # otherwise tasks are listed from the bottom up
+            fig.update_yaxes(autorange="reversed")  # otherwise tasks are listed from the bottom up
             fig.update_traces(marker_line_color="black", marker_line_width=1, opacity=1)
-            fig.write_html(
-                fig_path, include_plotlyjs="cdn" if pytest_running() else True
-            )
+            fig.write_html(fig_path, include_plotlyjs="cdn" if pytest_running() else True)
             if self.ctx.shared_log_root:
                 shutil.copy(fig_path, self.ctx.shared_log_root)
             logger.debug(f"exported timeline figure to {fig_path}")
 
     def notify_state_observers(self, force_notify=False) -> bool:
         secs_since_last_state_notify = time.time() - self.last_state_notify_time
-        if (
-            force_notify
-            or secs_since_last_state_notify >= self.secs_state_notify_interval
-        ):
+        if force_notify or secs_since_last_state_notify >= self.secs_state_notify_interval:
             self.last_state_notify_time = time.time()
             for observer in self.sched_state_observers:
                 if force_notify or observer.enabled:
@@ -949,14 +859,10 @@ class Scheduler(object):
                     observer.update(self)
                     elapsed_time = time.time() - start_time
                     if elapsed_time >= self.ctx.secs_executor_probe_interval / 2:
-                        self.secs_state_notify_interval = (
-                            self.ctx.secs_executor_probe_timeout
-                        )
+                        self.secs_state_notify_interval = self.ctx.secs_executor_probe_timeout
                     if elapsed_time >= self.ctx.secs_executor_probe_interval:
                         observer.enabled = False
-                        logger.warning(
-                            f"disabled slow scheduler state observer (elapsed time: {elapsed_time:.1f} secs): {observer}"
-                        )
+                        logger.warning(f"disabled slow scheduler state observer (elapsed time: {elapsed_time:.1f} secs): {observer}")
             return True
         else:
             return False
@@ -984,9 +890,7 @@ class Scheduler(object):
 
     def run(self) -> bool:
         mp.current_process().name = f"SchedulerMainProcess#{self.sched_epoch}"
-        logger.info(
-            f"start to run scheduler #{self.sched_epoch} on {socket.gethostname()}"
-        )
+        logger.info(f"start to run scheduler #{self.sched_epoch} on {socket.gethostname()}")
 
         perf_profile = None
         if self.ctx.enable_profiling:
@@ -1001,48 +905,30 @@ class Scheduler(object):
             self.prioritize_retry |= self.sched_epoch > 0
 
             if self.local_queue or self.sched_queue:
-                pending_tasks = [
-                    item
-                    for item in self.local_queue + self.sched_queue
-                    if isinstance(item, Task)
-                ]
+                pending_tasks = [item for item in self.local_queue + self.sched_queue if isinstance(item, Task)]
                 self.local_queue.clear()
                 self.sched_queue.clear()
-                logger.info(
-                    f"requeue {len(pending_tasks)} pending tasks with latest epoch #{self.sched_epoch}: {pending_tasks[:3]} ..."
-                )
+                logger.info(f"requeue {len(pending_tasks)} pending tasks with latest epoch #{self.sched_epoch}: {pending_tasks[:3]} ...")
                 self.try_enqueue(pending_tasks)
 
             if self.sched_epoch == 0:
                 leaf_tasks = self.exec_plan.leaves
-                logger.info(
-                    f"enqueue {len(leaf_tasks)} leaf tasks: {leaf_tasks[:3]} ..."
-                )
+                logger.info(f"enqueue {len(leaf_tasks)} leaf tasks: {leaf_tasks[:3]} ...")
                 self.try_enqueue(leaf_tasks)
 
             self.log_overall_progress()
             while (num_finished_tasks := self.process_finished_tasks(pool)) > 0:
-                logger.info(
-                    f"processed {num_finished_tasks} finished tasks during startup"
-                )
+                logger.info(f"processed {num_finished_tasks} finished tasks during startup")
                 self.log_overall_progress()
 
-            earlier_running_tasks = [
-                item for item in self.running_works if isinstance(item, Task)
-            ]
+            earlier_running_tasks = [item for item in self.running_works if isinstance(item, Task)]
             if earlier_running_tasks:
-                logger.info(
-                    f"enqueue {len(earlier_running_tasks)} earlier running tasks: {earlier_running_tasks[:3]} ..."
-                )
+                logger.info(f"enqueue {len(earlier_running_tasks)} earlier running tasks: {earlier_running_tasks[:3]} ...")
                 self.try_enqueue(earlier_running_tasks)
 
             self.suspend_good_executors()
-            self.add_state_observer(
-                Scheduler.StateObserver(Scheduler.log_current_status)
-            )
-            self.add_state_observer(
-                Scheduler.StateObserver(Scheduler.export_timeline_figs)
-            )
+            self.add_state_observer(Scheduler.StateObserver(Scheduler.log_current_status))
+            self.add_state_observer(Scheduler.StateObserver(Scheduler.export_timeline_figs))
             self.notify_state_observers(force_notify=True)
 
             try:
@@ -1063,14 +949,10 @@ class Scheduler(object):
             if self.success:
                 self.clean_temp_files(pool)
                 logger.success(f"final output path: {self.exec_plan.final_output_path}")
-                logger.info(
-                    f"analyzed plan:{os.linesep}{self.exec_plan.analyzed_logical_plan.explain_str()}"
-                )
+                logger.info(f"analyzed plan:{os.linesep}{self.exec_plan.analyzed_logical_plan.explain_str()}")
 
         if perf_profile is not None:
-            logger.debug(
-                f"scheduler perf profile:{os.linesep}{cprofile_to_string(perf_profile)}"
-            )
+            logger.debug(f"scheduler perf profile:{os.linesep}{cprofile_to_string(perf_profile)}")
 
         logger.info(f"scheduler of job {self.ctx.job_id} exits")
         logger.complete()
@@ -1082,20 +964,14 @@ class Scheduler(object):
             task = self.copy_task_for_execution(task)
             if task.key in self.succeeded_tasks:
                 logger.debug(f"task {repr(task)} already succeeded, skipping")
-                self.try_enqueue(
-                    self.get_runnable_tasks(self.succeeded_tasks[task.key])
-                )
+                self.try_enqueue(self.get_runnable_tasks(self.succeeded_tasks[task.key]))
                 continue
             if task.runtime_id in self.scheduled_tasks:
                 logger.debug(f"task {repr(task)} already scheduled, skipping")
                 continue
             # save enqueued task
             self.scheduled_tasks[task.runtime_id] = task
-            if (
-                self.standalone_mode
-                or task.exec_on_scheduler
-                or task.skip_when_any_input_empty
-            ):
+            if self.standalone_mode or task.exec_on_scheduler or task.skip_when_any_input_empty:
                 self.local_queue.append(task)
             else:
                 self.sched_queue.append(task)
@@ -1114,34 +990,20 @@ class Scheduler(object):
 
             if self.local_queue:
                 assert self.local_executor.alive
-                logger.info(
-                    f"running {len(self.local_queue)} works on local executor: {self.local_queue[:3]} ..."
-                )
-                self.local_queue = [
-                    item
-                    for item in self.local_queue
-                    if not self.local_executor.push(item, buffering=True)
-                ]
+                logger.info(f"running {len(self.local_queue)} works on local executor: {self.local_queue[:3]} ...")
+                self.local_queue = [item for item in self.local_queue if not self.local_executor.push(item, buffering=True)]
                 self.local_executor.flush()
 
             has_progress |= self.dispatch_tasks(pool) > 0
 
-            if len(
-                self.sched_queue
-            ) == 0 and self.num_pending_nontrivial_tasks + 1 < len(self.good_executors):
+            if len(self.sched_queue) == 0 and self.num_pending_nontrivial_tasks + 1 < len(self.good_executors):
                 for executor in self.good_executors:
                     if executor.idle:
-                        logger.info(
-                            f"{len(self.good_executors)} remote executors running, stopping {executor}"
-                        )
+                        logger.info(f"{len(self.good_executors)} remote executors running, stopping {executor}")
                         executor.stop()
                         break
 
-            if (
-                len(self.sched_queue) == 0
-                and len(self.local_queue) == 0
-                and self.num_running_works == 0
-            ):
+            if len(self.sched_queue) == 0 and len(self.local_queue) == 0 and self.num_running_works == 0:
                 self.log_overall_progress()
                 assert (
                     self.num_pending_tasks == 0
@@ -1166,29 +1028,13 @@ class Scheduler(object):
 
     def dispatch_tasks(self, pool: ThreadPoolExecutor):
         # sort pending tasks
-        item_sort_key = (
-            (lambda item: (-item.retry_count, item.id))
-            if self.prioritize_retry
-            else (lambda item: (item.retry_count, item.id))
-        )
+        item_sort_key = (lambda item: (-item.retry_count, item.id)) if self.prioritize_retry else (lambda item: (item.retry_count, item.id))
         items_sorted_by_node_id = sorted(self.sched_queue, key=lambda t: t.node_id)
-        items_group_by_node_id = itertools.groupby(
-            items_sorted_by_node_id, key=lambda t: t.node_id
-        )
-        sorted_item_groups = [
-            sorted(items, key=item_sort_key) for _, items in items_group_by_node_id
-        ]
-        self.sched_queue = [
-            item
-            for batch in itertools.zip_longest(*sorted_item_groups, fillvalue=None)
-            for item in batch
-            if item is not None
-        ]
+        items_group_by_node_id = itertools.groupby(items_sorted_by_node_id, key=lambda t: t.node_id)
+        sorted_item_groups = [sorted(items, key=item_sort_key) for _, items in items_group_by_node_id]
+        self.sched_queue = [item for batch in itertools.zip_longest(*sorted_item_groups, fillvalue=None) for item in batch if item is not None]
 
-        final_phase = (
-            self.num_pending_nontrivial_tasks - self.num_running_works
-            <= len(self.good_executors) * 2
-        )
+        final_phase = self.num_pending_nontrivial_tasks - self.num_running_works <= len(self.good_executors) * 2
         num_dispatched_tasks = 0
         unassigned_tasks = []
 
@@ -1196,42 +1042,31 @@ class Scheduler(object):
             first_item = self.sched_queue[0]
 
             # assign tasks to executors in round-robin fashion
-            usable_executors = [
-                executor for executor in self.good_executors if not executor.busy
-            ]
-            for executor in sorted(
-                usable_executors, key=lambda exec: len(exec.running_works)
-            ):
+            usable_executors = [executor for executor in self.good_executors if not executor.busy]
+            for executor in sorted(usable_executors, key=lambda exec: len(exec.running_works)):
                 if not self.sched_queue:
                     break
                 item = self.sched_queue[0]
 
                 if item._memory_limit is None:
-                    item._memory_limit = np.int64(
-                        executor.memory_size * item._cpu_limit // executor.cpu_count
-                    )
+                    item._memory_limit = np.int64(executor.memory_size * item._cpu_limit // executor.cpu_count)
 
                 if item.key in self.succeeded_tasks:
                     logger.debug(f"task {repr(item)} already succeeded, skipping")
                     self.sched_queue.pop(0)
-                    self.try_enqueue(
-                        self.get_runnable_tasks(self.succeeded_tasks[item.key])
-                    )
+                    self.try_enqueue(self.get_runnable_tasks(self.succeeded_tasks[item.key]))
                 elif (
                     len(executor.running_works) < executor.max_running_works
                     and executor.allocated_cpus + item.cpu_limit <= executor.cpu_count
                     and executor.allocated_gpus + item.gpu_limit <= executor.gpu_count
-                    and executor.allocated_memory + item.memory_limit
-                    <= executor.memory_size
+                    and executor.allocated_memory + item.memory_limit <= executor.memory_size
                     and item.key not in executor.running_works
                 ):
                     if final_phase:
                         self.try_boost_resource(item, executor)
                     # push to wq of executor but not flushed yet
                     executor.push(item, buffering=True)
-                    logger.info(
-                        f"appended {repr(item)} ({item.cpu_limit} CPUs, {item.memory_limit/GB:.3f}GB) to the queue of {executor}"
-                    )
+                    logger.info(f"appended {repr(item)} ({item.cpu_limit} CPUs, {item.memory_limit/GB:.3f}GB) to the queue of {executor}")
                     self.sched_queue.pop(0)
                     num_dispatched_tasks += 1
 
@@ -1242,55 +1077,35 @@ class Scheduler(object):
         self.sched_queue.extend(unassigned_tasks)
 
         # flush the buffered work items into wq
-        assert all(
-            pool.map(RemoteExecutor.flush, self.good_executors)
-        ), f"failed to flush work queues"
+        assert all(pool.map(RemoteExecutor.flush, self.good_executors)), f"failed to flush work queues"
         return num_dispatched_tasks
 
     def process_finished_tasks(self, pool: ThreadPoolExecutor) -> int:
         pop_results = pool.map(RemoteExecutor.pop, self.available_executors.values())
         num_finished_tasks = 0
 
-        for executor, finished_tasks in zip(
-            self.available_executors.values(), pop_results
-        ):
+        for executor, finished_tasks in zip(self.available_executors.values(), pop_results):
 
             for finished_task in finished_tasks:
                 assert isinstance(finished_task, Task)
 
-                scheduled_task = self.scheduled_tasks.get(
-                    finished_task.runtime_id, None
-                )
+                scheduled_task = self.scheduled_tasks.get(finished_task.runtime_id, None)
                 if scheduled_task is None:
-                    logger.info(
-                        f"task not initiated by current scheduler: {finished_task}"
-                    )
+                    logger.info(f"task not initiated by current scheduler: {finished_task}")
                     if finished_task.status != WorkStatus.SUCCEED and (
-                        missing_inputs := [
-                            key
-                            for key in finished_task.input_deps
-                            if key not in self.succeeded_tasks
-                        ]
+                        missing_inputs := [key for key in finished_task.input_deps if key not in self.succeeded_tasks]
                     ):
-                        logger.info(
-                            f"ignore {repr(finished_task)} since some of the input deps are missing: {missing_inputs}"
-                        )
+                        logger.info(f"ignore {repr(finished_task)} since some of the input deps are missing: {missing_inputs}")
                         continue
 
                 if finished_task.status == WorkStatus.INCOMPLETE:
-                    logger.trace(
-                        f"{repr(finished_task)} checkpoint created on {executor.id}: {finished_task.runtime_state}"
-                    )
-                    self.tasks[finished_task.key].runtime_state = (
-                        finished_task.runtime_state
-                    )
+                    logger.trace(f"{repr(finished_task)} checkpoint created on {executor.id}: {finished_task.runtime_state}")
+                    self.tasks[finished_task.key].runtime_state = finished_task.runtime_state
                     continue
 
                 prior_task = self.finished_tasks.get(finished_task.runtime_id, None)
                 if prior_task is not None:
-                    logger.info(
-                        f"found duplicate tasks, current: {repr(finished_task)}, prior: {repr(prior_task)}"
-                    )
+                    logger.info(f"found duplicate tasks, current: {repr(finished_task)}, prior: {repr(prior_task)}")
                     continue
                 else:
                     self.finished_tasks[finished_task.runtime_id] = finished_task
@@ -1298,30 +1113,22 @@ class Scheduler(object):
 
                 succeeded_task = self.succeeded_tasks.get(finished_task.key, None)
                 if succeeded_task is not None:
-                    logger.info(
-                        f"task already succeeded, current: {repr(finished_task)}, succeeded: {repr(succeeded_task)}"
-                    )
+                    logger.info(f"task already succeeded, current: {repr(finished_task)}, succeeded: {repr(succeeded_task)}")
                     continue
 
                 if finished_task.status in (WorkStatus.FAILED, WorkStatus.CRASHED):
-                    logger.warning(
-                        f"task failed on {executor.id}: {finished_task}, error: {finished_task.exception}"
-                    )
+                    logger.warning(f"task failed on {executor.id}: {finished_task}, error: {finished_task.exception}")
                     finished_task.dump()
 
                     task = self.tasks[finished_task.key]
                     task.fail_count += 1
 
                     if task.fail_count > self.max_fail_count:
-                        logger.critical(
-                            f"task failed too many times: {finished_task}, stopping ..."
-                        )
+                        logger.critical(f"task failed too many times: {finished_task}, stopping ...")
                         self.stop_executors()
                         self.sched_running = False
 
-                    if not executor.local and finished_task.oom(
-                        self.nonzero_exitcode_as_oom
-                    ):
+                    if not executor.local and finished_task.oom(self.nonzero_exitcode_as_oom):
                         if task._memory_limit is None:
                             task._memory_limit = finished_task._memory_limit
                         self.try_relax_memory_limit(task, executor)
@@ -1332,9 +1139,7 @@ class Scheduler(object):
 
                     self.try_enqueue(self.get_retry_task(finished_task.key))
                 else:
-                    assert (
-                        finished_task.status == WorkStatus.SUCCEED
-                    ), f"unexpected task status: {finished_task}"
+                    assert finished_task.status == WorkStatus.SUCCEED, f"unexpected task status: {finished_task}"
                     logger.log(
                         "TRACE" if finished_task.exec_on_scheduler else "INFO",
                         "task succeeded on {}: {}",
@@ -1344,9 +1149,7 @@ class Scheduler(object):
 
                     self.succeeded_tasks[finished_task.key] = finished_task
                     if not finished_task.exec_on_scheduler:
-                        self.succeeded_nontrivial_tasks[finished_task.key] = (
-                            finished_task
-                        )
+                        self.succeeded_nontrivial_tasks[finished_task.key] = finished_task
 
                     # stop the redundant retries of finished task
                     self.stop_running_tasks(finished_task.key)
@@ -1356,9 +1159,7 @@ class Scheduler(object):
                     if finished_task.id == self.exec_plan.root_task.id:
                         self.sched_queue = []
                         self.stop_executors()
-                        logger.success(
-                            f"all tasks completed, root task: {finished_task}"
-                        )
+                        logger.success(f"all tasks completed, root task: {finished_task}")
                         logger.success(
                             f"{len(self.succeeded_tasks)} succeeded tasks, success: {self.success}, elapsed time: {self.elapsed_time:.3f} secs"
                         )

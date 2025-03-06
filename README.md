@@ -5,13 +5,16 @@
 [![Docs](https://img.shields.io/badge/docs-latest-brightgreen.svg)](https://deepseek-ai.github.io/smallpond/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-A lightweight data processing framework built on [DuckDB] and [3FS].
+A lightweight **distributed** data processing framework built on [DuckDB] and [Ray], with [3FS] integration for high-performance storage.
 
 ## Features
 
 - 🚀 High-performance data processing powered by DuckDB
 - 🌍 Scalable to handle PB-scale datasets
+- 🔄 Distributed execution through [Ray] for parallel processing of TBs data
 - 🛠️ Easy operations with no long-running services
+- 💾 Storage support for local filesystem and [3FS]
+- 📈 Flexible partitioning strategies (hash, even, random)
 
 ## Installation
 
@@ -31,13 +34,13 @@ wget https://duckdb.org/data/prices.parquet
 ```python
 import smallpond
 
-# Initialize session
+# Initialize session (automatically starts a local Ray cluster)
 sp = smallpond.init()
 
 # Load data
 df = sp.read_parquet("prices.parquet")
 
-# Process data
+# Process data with partitioning for distributed execution
 df = df.repartition(3, hash_by="ticker")
 df = sp.partial_sql("SELECT ticker, min(price), max(price) FROM {0} GROUP BY ticker", df)
 
@@ -50,8 +53,9 @@ print(df.to_pandas())
 ## Documentation
 
 For detailed guides and API reference:
-- [Getting Started](docs/source/getstarted.rst)
-- [API Reference](docs/source/api.rst)
+- [Getting Started](https://deepseek-ai.github.io/smallpond/getstarted.html)
+- [API Reference](https://deepseek-ai.github.io/smallpond/api.html)
+- [Architecture](https://deepseek-ai.github.io/smallpond/architecture.html)
 
 ## Performance
 
@@ -60,6 +64,7 @@ We evaluated smallpond using the [GraySort benchmark] ([script]) on a cluster co
 Details can be found in [3FS - Gray Sort].
 
 [DuckDB]: https://duckdb.org/
+[Ray]: https://ray.io/
 [3FS]: https://github.com/deepseek-ai/3FS
 [GraySort benchmark]: https://sortbenchmark.org/
 [script]: benchmarks/gray_sort_benchmark.py

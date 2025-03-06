@@ -59,6 +59,7 @@ dev = [
 docs = [
     "sphinx==7.1.2",
     "pydata-sphinx-theme==0.14.4",
+    "sphinxcontrib-mermaid==1.0.0",
 ]
 warc = [
     "warcio >= 1.7.4",

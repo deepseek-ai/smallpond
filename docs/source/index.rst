@@ -19,6 +19,7 @@ Why smallpond?
    :maxdepth: 1
 
    getstarted
+   architecture
    internals
 
 .. toctree::

@@ -16,6 +16,7 @@ author = "deepseek"
 extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.autosummary",
+    "sphinxcontrib.mermaid",
 ]
 
 templates_path = ["_templates"]

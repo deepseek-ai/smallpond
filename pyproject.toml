@@ -38,6 +38,7 @@ dependencies = [
     "fsspec >= 2023.12.2",
     "ray[default] >= 2.10.0",
     "graphviz >= 0.19.1",
+    "deltalake >= 0.15.0",
 ]
 
 [project.optional-dependencies]

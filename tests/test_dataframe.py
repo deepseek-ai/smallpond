@@ -3,6 +3,7 @@ from typing import List
 import pandas as pd
 import pyarrow as pa
 import pytest
+from deltalake.writer import write_deltalake
 
 from smallpond.dataframe import Session
 
@@ -40,8 +41,10 @@ def test_parquet(sp: Session):
     assert df.count() == 1000
 
 def test_read_deltalake(sp: Session):
+    sample = sp.from_pandas(pd.DataFrame({"a": [1, 2, 3], "b": [4, 5, 6]}))
+    write_deltalake("tests/data/", sample)
     df = sp.read_deltalake("tests/data/")
-    assert df.count() == 4
+    assert df.count() == 3
 
 
 def test_take(sp: Session):

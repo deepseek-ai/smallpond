@@ -39,6 +39,10 @@ def test_parquet(sp: Session):
     df = sp.read_parquet("tests/data/mock_urls/*.parquet")
     assert df.count() == 1000
 
+def test_read_deltalake(sp: Session):
+    df = sp.read_deltalake("tests/data/")
+    assert df.count() == 4
+
 
 def test_take(sp: Session):
     df = sp.from_pandas(pd.DataFrame({"a": [1, 2, 3], "b": [4, 5, 6]}))

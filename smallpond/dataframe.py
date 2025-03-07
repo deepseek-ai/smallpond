@@ -12,6 +12,7 @@ import pyarrow as arrow
 import ray
 import ray.exceptions
 from loguru import logger
+from deltalake import DeltaTable
 
 from smallpond.execution.task import Task
 from smallpond.io.filesystem import remove_path
@@ -53,6 +54,25 @@ class Session(SessionBase):
         """
         Create a DataFrame from Parquet files.
         """
+        dataset = ParquetDataSet(paths, columns=columns, union_by_name=union_by_name, recursive=recursive)
+        plan = DataSourceNode(self._ctx, dataset)
+        return DataFrame(self, plan)
+    
+
+    def read_deltalake(
+        self,
+        path: str,
+        recursive: bool = False,
+        columns: Optional[List[str]] = None,
+        union_by_name: bool = False,
+    ) -> DataFrame:
+        """
+        Create a DataFrame from DeltaLake Parquet files.
+        """
+        if 's3://' in path or 'gs://' in path:
+            raise ValueError("DeltaLake on S3 and GS is not supported yet.")
+        dt = DeltaTable(path)
+        paths = dt.files()
         dataset = ParquetDataSet(paths, columns=columns, union_by_name=union_by_name, recursive=recursive)
         plan = DataSourceNode(self._ctx, dataset)
         return DataFrame(self, plan)

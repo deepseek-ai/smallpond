@@ -41,7 +41,7 @@ def test_parquet(sp: Session):
     assert df.count() == 1000
 
 def test_read_deltalake(sp: Session):
-    sample = sp.from_pandas(pd.DataFrame({"a": [1, 2, 3], "b": [4, 5, 6]}))
+    sample = pd.DataFrame({"x": [1, 2, 3]})
     write_deltalake("tests/data/", sample)
     df = sp.read_deltalake("tests/data/")
     assert df.count() == 3

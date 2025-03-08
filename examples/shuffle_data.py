@@ -1,5 +1,15 @@
 """
-Smallpond example showing how to shuffle data using different partitioning strategies.
+Large-Scale Data Shuffling Example
+================================
+
+This script demonstrates advanced data processing capabilities of Smallpond using
+the Driver class for complex pipeline execution. It shows how to:
+- Create multi-stage data processing pipelines
+- Implement different partitioning strategies (row and hash-based)
+- Apply SQL transformations on partitioned data
+- Use memory-efficient streaming writes
+
+Note: Uses Driver class for advanced execution control instead of smallpond.init()
 """
 
 from smallpond.contrib.copy_table import StreamCopy
@@ -16,27 +26,6 @@ from smallpond.logical.node import (
 
 
 def shuffle_data(
-    """
-    Shuffle the input data from the input paths into the specified number of
-    output partitions.
-
-    The input data is first split into the specified number of data partitions.
-    Each data partition is then further split into the specified number of hash
-    partitions. The hash partitions are then written out as the final output.
-
-    If the `skip_hash_partition` flag is set, the hash partitions are not used and
-    the data is simply split into the specified number of data partitions.
-
-    :param input_paths: The list of input files to read data from.
-    :param num_out_data_partitions: The number of output data partitions to write.
-    :param num_data_partitions: The number of data partitions to split the input
-        data into before hash partitioning.
-    :param num_hash_partitions: The number of hash partitions to split the data
-        into after data partitioning.
-    :param engine_type: The type of engine to use for the hash partitioning.
-    :param skip_hash_partition: If True, skip the hash partitioning step.
-    :return: A LogicalPlan object representing the shuffle operation.
-    """
     input_paths,
     num_out_data_partitions: int = 0,
     num_data_partitions: int = 10,
@@ -47,16 +36,18 @@ def shuffle_data(
     ctx = Context()
     dataset = ParquetDataSet(input_paths, union_by_name=True)
     data_files = DataSourceNode(ctx, dataset)
+    # Node 1: Partitions data by splitting based on file boundaries or row counts
     data_partitions = DataSetPartitionNode(
         ctx,
         (data_files,),
         npartitions=num_data_partitions,
-        partition_by_rows=True,
+        partition_by_rows=True, # distributes rows across partitions
         random_shuffle=skip_hash_partition,
     )
     if skip_hash_partition:
         urls_partitions = data_partitions
     else:
+        # Node 2: HashPartiion to ensure even distribution of rows across partitions
         urls_partitions = HashPartitionNode(
             ctx,
             (data_partitions,),
@@ -65,22 +56,26 @@ def shuffle_data(
             random_shuffle=True,
             engine_type=engine_type,
         )
+    # Node 3: Example adding SQL Tranformations, here we are adding a sort_key column and sorting one it
     shuffled_urls = SqlEngineNode(
         ctx,
         (urls_partitions,),
         r"select *, cast(random() * 2147483647 as integer) as sort_key from {0} order by sort_key",
         cpu_limit=16,
     )
+    # Node 4: Repartition again to fit output partition count
     repartitioned = DataSetPartitionNode(
         ctx,
         (shuffled_urls,),
         npartitions=num_out_data_partitions,
         partition_by_rows=True,
     )
+    # Node 5: Write file in partitioned parquet format using Streaming for memory efficiency
     shuffled_urls = StreamCopy(
         ctx, (repartitioned,), output_name="data_copy", cpu_limit=1
     )
 
+    # Logical Plan DAG with all the Nodes dependencies and creates lazy execution plan 
     plan = LogicalPlan(ctx, shuffled_urls)
     return plan
 
@@ -96,6 +91,7 @@ def main():
     )
     driver.add_argument("-x", "--skip_hash_partition", action="store_true")
     plan = shuffle_data(**driver.get_arguments())
+    # Executes logical plan parallelly, handling task scheduling dependencies & resource management
     driver.run(plan)
 
 

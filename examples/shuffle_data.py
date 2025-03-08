@@ -1,3 +1,7 @@
+"""
+Smallpond example showing how to shuffle data using different partitioning strategies.
+"""
+
 from smallpond.contrib.copy_table import StreamCopy
 from smallpond.execution.driver import Driver
 from smallpond.logical.dataset import ParquetDataSet
@@ -12,6 +16,27 @@ from smallpond.logical.node import (
 
 
 def shuffle_data(
+    """
+    Shuffle the input data from the input paths into the specified number of
+    output partitions.
+
+    The input data is first split into the specified number of data partitions.
+    Each data partition is then further split into the specified number of hash
+    partitions. The hash partitions are then written out as the final output.
+
+    If the `skip_hash_partition` flag is set, the hash partitions are not used and
+    the data is simply split into the specified number of data partitions.
+
+    :param input_paths: The list of input files to read data from.
+    :param num_out_data_partitions: The number of output data partitions to write.
+    :param num_data_partitions: The number of data partitions to split the input
+        data into before hash partitioning.
+    :param num_hash_partitions: The number of hash partitions to split the data
+        into after data partitioning.
+    :param engine_type: The type of engine to use for the hash partitioning.
+    :param skip_hash_partition: If True, skip the hash partitioning step.
+    :return: A LogicalPlan object representing the shuffle operation.
+    """
     input_paths,
     num_out_data_partitions: int = 0,
     num_data_partitions: int = 10,

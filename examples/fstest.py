@@ -1,8 +1,13 @@
-# Test the correctness of file system read and write.
-#
-# This script runs multiple tasks to write and read data to/from the file system.
-# Each task writes to an individual file in the given directory.
-# Then it reads the data back and verifies the correctness.
+"""Filesystem Testing with Smallpond's Distributed Execution
+
+Demonstrates Smallpond's distributed computation capabilities through filesystem I/O:
+1. Uses sp.from_items() to create distributed tasks
+2. Uses df.repartition() for parallel task distribution
+3. Uses df.map() to execute I/O operations in parallel
+4. Collects results with to_pandas() for analysis
+
+Note: Smallpond provides read/write methods read_parquet(),write_parquet() etc, but this example intentionally uses low-level file I/O wrapped in Smallpond's distributed execution framework to perform filesystem benchmarking. The distribution is handled by Smallpond (parallel execution across workers) while the actual I/O is done with Python's native file operations to have precise control needed for benchmarking. 
+"""
 
 import argparse
 import glob
@@ -161,10 +166,13 @@ def fstest(
 
     if output_path is not None:
         os.makedirs(output_path, exist_ok=True)
+        #creates a distributed DataFrame
         df = sp.from_items(
             [{"path": os.path.join(output_path, f"{i}")} for i in range(npartitions)]
         )
+        #distributes the work across partitions
         df = df.repartition(npartitions, by_rows=True)
+        #runs the write operations in parallel across those partitions
         stats = df.map(lambda x: fswrite(x["path"], size, blocksize)).to_pandas()
         logging.info(f"write stats:\n{stats}")
 

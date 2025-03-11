@@ -29,16 +29,12 @@ class ImportWarcFiles(PythonScriptNode):
         ]
     )
 
-    def import_warc_file(
-        self, warc_path: PurePath, parquet_path: PurePath
-    ) -> Tuple[int, int]:
+    def import_warc_file(self, warc_path: PurePath, parquet_path: PurePath) -> Tuple[int, int]:
         total_size = 0
         docs = []
 
         with open(warc_path, "rb") as warc_file:
-            zstd_reader = zstd.ZstdDecompressor().stream_reader(
-                warc_file, read_size=16 * MB
-            )
+            zstd_reader = zstd.ZstdDecompressor().stream_reader(warc_file, read_size=16 * MB)
             for record in ArchiveIterator(zstd_reader):
                 if record.rec_type == "response":
                     url = record.rec_headers.get_header("WARC-Target-URI")
@@ -48,9 +44,7 @@ class ImportWarcFiles(PythonScriptNode):
                     total_size += len(content)
                     docs.append((url, domain, date, content))
 
-            table = arrow.Table.from_arrays(
-                [arrow.array(column) for column in zip(*docs)], schema=self.schema
-            )
+            table = arrow.Table.from_arrays([arrow.array(column) for column in zip(*docs)], schema=self.schema)
             dump_to_parquet_files(table, parquet_path.parent, parquet_path.name)
             return len(docs), total_size
 
@@ -60,14 +54,9 @@ class ImportWarcFiles(PythonScriptNode):
         input_datasets: List[DataSet],
         output_path: str,
     ) -> bool:
-        warc_paths = [
-            PurePath(warc_path)
-            for dataset in input_datasets
-            for warc_path in dataset.resolved_paths
-        ]
+        warc_paths = [PurePath(warc_path) for dataset in input_datasets for warc_path in dataset.resolved_paths]
         parquet_paths = [
-            PurePath(output_path)
-            / f"data{path_index}-{PurePath(warc_path.name).with_suffix('.parquet')}"
+            PurePath(output_path) / f"data{path_index}-{PurePath(warc_path.name).with_suffix('.parquet')}"
             for path_index, warc_path in enumerate(warc_paths)
         ]
 
@@ -75,24 +64,16 @@ class ImportWarcFiles(PythonScriptNode):
         for warc_path, parquet_path in zip(warc_paths, parquet_paths):
             try:
                 doc_count, total_size = self.import_warc_file(warc_path, parquet_path)
-                logger.info(
-                    f"imported {doc_count} web pages ({total_size/MB:.3f}MB) from file '{warc_path}' to '{parquet_path}'"
-                )
+                logger.info(f"imported {doc_count} web pages ({total_size/MB:.3f}MB) from file '{warc_path}' to '{parquet_path}'")
             except Exception as ex:
-                logger.opt(exception=ex).error(
-                    f"failed to import web pages from file '{warc_path}'"
-                )
+                logger.opt(exception=ex).error(f"failed to import web pages from file '{warc_path}'")
                 return False
         return True
 
 
 class ExtractHtmlBody(ArrowStreamNode):
 
-    unicode_punctuation = "".join(
-        chr(i)
-        for i in range(sys.maxunicode)
-        if unicodedata.category(chr(i)).startswith("P")
-    )
+    unicode_punctuation = "".join(chr(i) for i in range(sys.maxunicode) if unicodedata.category(chr(i)).startswith("P"))
     separator_str = string.whitespace + string.punctuation + unicode_punctuation
     translator = str.maketrans(separator_str, " " * len(separator_str))
 
@@ -117,27 +98,19 @@ class ExtractHtmlBody(ArrowStreamNode):
             tokens.extend(self.split_string(doc.get_text(" ", strip=True).lower()))
             return tokens
         except Exception as ex:
-            logger.opt(exception=ex).error(
-                f"failed to extract tokens from {url.as_py()}"
-            )
+            logger.opt(exception=ex).error(f"failed to extract tokens from {url.as_py()}")
             return []
 
-    def process(
-        self, runtime_ctx: RuntimeContext, input_readers: List[arrow.RecordBatchReader]
-    ) -> Iterable[arrow.Table]:
+    def process(self, runtime_ctx: RuntimeContext, input_readers: List[arrow.RecordBatchReader]) -> Iterable[arrow.Table]:
         for batch in input_readers[0]:
             urls, domains, dates, contents = batch.columns
             doc_tokens = []
             try:
                 for i, (url, content) in enumerate(zip(urls, contents)):
                     tokens = self.extract_tokens(url, content)
-                    logger.info(
-                        f"#{i}/{len(urls)} extracted {len(tokens)} tokens from {url}"
-                    )
+                    logger.info(f"#{i}/{len(urls)} extracted {len(tokens)} tokens from {url}")
                     doc_tokens.append(tokens)
-                yield arrow.Table.from_arrays(
-                    [urls, domains, dates, arrow.array(doc_tokens)], schema=self.schema
-                )
+                yield arrow.Table.from_arrays([urls, domains, dates, arrow.array(doc_tokens)], schema=self.schema)
             except Exception as ex:
                 logger.opt(exception=ex).error(f"failed to extract tokens")
                 break

@@ -126,11 +126,7 @@ class TaskRuntimeId:
         return f"{self.id}.{self.epoch}.{self.retry}"
 
 
-class PerfStats(
-    namedtuple(
-        "PerfStats", ("cnt", "sum", "min", "max", "avg", "p50", "p75", "p95", "p99")
-    )
-):
+class PerfStats(namedtuple("PerfStats", ("cnt", "sum", "min", "max", "avg", "p50", "p75", "p95", "p99"))):
     """
     Performance statistics for a task.
     """
@@ -179,9 +175,7 @@ class RuntimeContext(object):
         self.data_root = data_root
         self.next_task_id = 0
         self.num_executors = num_executors
-        self.random_seed: int = random_seed or int.from_bytes(
-            os.urandom(RAND_SEED_BYTE_LEN), byteorder=sys.byteorder
-        )
+        self.random_seed: int = random_seed or int.from_bytes(os.urandom(RAND_SEED_BYTE_LEN), byteorder=sys.byteorder)
         self.env_overrides = env_overrides or {}
         self.bind_numa_node = bind_numa_node
         self.numa_node_id: Optional[int] = None
@@ -198,11 +192,7 @@ class RuntimeContext(object):
         self.remove_empty_parquet = remove_empty_parquet
         self.skip_task_with_empty_input = skip_task_with_empty_input
 
-        self.shared_log_root = (
-            os.path.join(shared_log_root, self.job_root_dirname)
-            if shared_log_root
-            else None
-        )
+        self.shared_log_root = os.path.join(shared_log_root, self.job_root_dirname) if shared_log_root else None
         self.console_log_level = console_log_level
         self.file_log_level = file_log_level
         self.disable_log_rotation = disable_log_rotation
@@ -270,20 +260,12 @@ class RuntimeContext(object):
     @property
     def available_memory(self):
         available_memory = psutil.virtual_memory().available
-        return (
-            available_memory // self.numa_node_count
-            if self.bind_numa_node
-            else available_memory
-        )
+        return available_memory // self.numa_node_count if self.bind_numa_node else available_memory
 
     @property
     def total_memory(self):
         total_memory = psutil.virtual_memory().total
-        return (
-            total_memory // self.numa_node_count
-            if self.bind_numa_node
-            else total_memory
-        )
+        return total_memory // self.numa_node_count if self.bind_numa_node else total_memory
 
     @property
     def usable_cpu_count(self):
@@ -300,11 +282,7 @@ class RuntimeContext(object):
     def get_local_gpus(self) -> List[GPUtil.GPU]:
         gpus = GPUtil.getGPUs()
         gpus_on_node = split_into_rows(gpus, self.numa_node_count)
-        return (
-            gpus_on_node[self.numa_node_id]
-            if self.bind_numa_node and self.numa_node_id is not None
-            else gpus
-        )
+        return gpus_on_node[self.numa_node_id] if self.bind_numa_node and self.numa_node_id is not None else gpus
 
     @property
     def usable_gpu_count(self):
@@ -359,14 +337,10 @@ class RuntimeContext(object):
         ld_library_path = os.getenv("LD_LIBRARY_PATH", "")
         py_library_path = os.path.join(sys.exec_prefix, "lib")
         if py_library_path not in ld_library_path:
-            env_overrides["LD_LIBRARY_PATH"] = ":".join(
-                [py_library_path, ld_library_path]
-            )
+            env_overrides["LD_LIBRARY_PATH"] = ":".join([py_library_path, ld_library_path])
         for key, val in env_overrides.items():
             if (old := os.getenv(key, None)) is not None:
-                logger.info(
-                    f"overwrite environment variable '{key}': '{old}' -> '{val}'"
-                )
+                logger.info(f"overwrite environment variable '{key}': '{old}' -> '{val}'")
             else:
                 logger.info(f"set environment variable '{key}': '{val}'")
             os.environ[key] = val
@@ -375,11 +349,7 @@ class RuntimeContext(object):
         )
 
     def _init_logs(self, exec_id: str, capture_stdout_stderr: bool = False) -> None:
-        log_rotation = (
-            {"rotation": "100 MB", "retention": 5}
-            if not self.disable_log_rotation
-            else {}
-        )
+        log_rotation = {"rotation": "100 MB", "retention": 5} if not self.disable_log_rotation else {}
         log_file_paths = [os.path.join(self.log_root, f"{exec_id}.log")]
         user_log_only = {"": self.file_log_level, "smallpond": False}
         user_log_path = os.path.join(self.log_root, f"{exec_id}-user.log")
@@ -425,9 +395,7 @@ class RuntimeContext(object):
         )
         logger.info(f"initialized user logging to file: {user_log_path}")
         # intercept messages from logging
-        logging.basicConfig(
-            handlers=[InterceptHandler()], level=logging.INFO, force=True
-        )
+        logging.basicConfig(handlers=[InterceptHandler()], level=logging.INFO, force=True)
         # capture stdout as INFO level
         # https://loguru.readthedocs.io/en/stable/resources/recipes.html#capturing-standard-stdout-stderr-and-warnings
         if capture_stdout_stderr:
@@ -459,9 +427,7 @@ class RuntimeContext(object):
 
 
 class Probe(WorkItem):
-    def __init__(
-        self, ctx: RuntimeContext, key: str, epoch: int, epochs_to_skip=0
-    ) -> None:
+    def __init__(self, ctx: RuntimeContext, key: str, epoch: int, epochs_to_skip=0) -> None:
         super().__init__(key, cpu_limit=0, gpu_limit=0, memory_limit=0)
         self.ctx = ctx
         self.epoch = epoch
@@ -483,14 +449,10 @@ class Probe(WorkItem):
         return self.epoch < other.epoch
 
     def run(self) -> bool:
-        self.cpu_percent = psutil.cpu_percent(
-            interval=min(self.ctx.secs_executor_probe_interval / 2, 3)
-        )
+        self.cpu_percent = psutil.cpu_percent(interval=min(self.ctx.secs_executor_probe_interval / 2, 3))
         self.total_memory = self.ctx.usable_memory_size
         self.available_memory = self.ctx.available_memory
-        self.resource_low = (
-            self.cpu_percent >= 80.0 or self.available_memory < self.total_memory // 16
-        )
+        self.resource_low = self.cpu_percent >= 80.0 or self.available_memory < self.total_memory // 16
         self.cpu_count = self.ctx.usable_cpu_count
         self.gpu_count = self.ctx.usable_gpu_count
         logger.info("resource usage: {}", self)
@@ -511,9 +473,7 @@ class PartitionInfo(object):
         "dimension",
     )
 
-    def __init__(
-        self, index: int = 0, npartitions: int = 1, dimension: str = toplevel_dimension
-    ) -> None:
+    def __init__(self, index: int = 0, npartitions: int = 1, dimension: str = toplevel_dimension) -> None:
         self.index = index
         self.npartitions = npartitions
         self.dimension = dimension
@@ -587,18 +547,11 @@ class Task(WorkItem):
         memory_limit: Optional[int] = None,
     ) -> None:
         assert isinstance(input_deps, Iterable), f"{input_deps} is not iterable"
-        assert all(
-            isinstance(dep, Task) for dep in input_deps
-        ), f"not every element of {input_deps} is a task"
-        assert isinstance(
-            partition_infos, Iterable
-        ), f"{partition_infos} is not iterable"
-        assert all(
-            isinstance(info, PartitionInfo) for info in partition_infos
-        ), f"not every element of {partition_infos} is a partition info"
+        assert all(isinstance(dep, Task) for dep in input_deps), f"not every element of {input_deps} is a task"
+        assert isinstance(partition_infos, Iterable), f"{partition_infos} is not iterable"
+        assert all(isinstance(info, PartitionInfo) for info in partition_infos), f"not every element of {partition_infos} is a partition info"
         assert any(
-            info.dimension == PartitionInfo.toplevel_dimension
-            for info in partition_infos
+            info.dimension == PartitionInfo.toplevel_dimension for info in partition_infos
         ), f"cannot find toplevel partition dimension: {partition_infos}"
         assert cpu_limit > 0, f"cpu_limit should be greater than zero"
         self.ctx = ctx
@@ -611,12 +564,8 @@ class Task(WorkItem):
         self.perf_metrics: Dict[str, np.int64] = defaultdict(np.int64)
         self.perf_profile = None
         self._partition_infos = sorted(partition_infos) or []
-        assert len(self.partition_dims) == len(
-            set(self.partition_dims)
-        ), f"found duplicate partition dimensions: {self.partition_dims}"
-        super().__init__(
-            f"{self.__class__.__name__}-{self.id}", cpu_limit, gpu_limit, memory_limit
-        )
+        assert len(self.partition_dims) == len(set(self.partition_dims)), f"found duplicate partition dimensions: {self.partition_dims}"
+        super().__init__(f"{self.__class__.__name__}-{self.id}", cpu_limit, gpu_limit, memory_limit)
         self.output_name = output_name
         self.output_root = output_path
         self._temp_output = output_name is None and output_path is None
@@ -663,11 +612,7 @@ class Task(WorkItem):
     @property
     def _pristine_attrs(self) -> Set[str]:
         """All attributes in __slots__."""
-        return set(
-            itertools.chain.from_iterable(
-                getattr(cls, "__slots__", []) for cls in type(self).__mro__
-            )
-        )
+        return set(itertools.chain.from_iterable(getattr(cls, "__slots__", []) for cls in type(self).__mro__))
 
     @property
     def partition_infos(self) -> Tuple[PartitionInfo]:
@@ -685,20 +630,11 @@ class Task(WorkItem):
             ("__job_id__", str(self.ctx.job_id)),
             ("__job_root__", self.ctx.job_root),
         ]
-        partition_infos = [
-            (info.dimension, str(info.index))
-            for info in self._partition_infos + (extra_partitions or [])
-        ]
-        return dict(
-            (PARQUET_METADATA_KEY_PREFIX + k, v)
-            for k, v in task_infos + partition_infos
-        )
+        partition_infos = [(info.dimension, str(info.index)) for info in self._partition_infos + (extra_partitions or [])]
+        return dict((PARQUET_METADATA_KEY_PREFIX + k, v) for k, v in task_infos + partition_infos)
 
     def parquet_kv_metadata_bytes(self, extra_partitions: List[PartitionInfo] = None):
-        return dict(
-            (k.encode("utf-8"), v.encode("utf-8"))
-            for k, v in self.parquet_kv_metadata_str(extra_partitions).items()
-        )
+        return dict((k.encode("utf-8"), v.encode("utf-8")) for k, v in self.parquet_kv_metadata_str(extra_partitions).items())
 
     @property
     def partition_dims(self):
@@ -741,19 +677,11 @@ class Task(WorkItem):
         """
         If the task has a special output directory, its runtime output directory will be under it.
         """
-        return (
-            None
-            if self.output_root is None
-            else os.path.join(self.output_root, ".staging")
-        )
+        return None if self.output_root is None else os.path.join(self.output_root, ".staging")
 
     @property
     def _final_output_root(self):
-        return (
-            self.ctx.staging_root
-            if self.temp_output
-            else (self.output_root or self.ctx.output_root)
-        )
+        return self.ctx.staging_root if self.temp_output else (self.output_root or self.ctx.output_root)
 
     @property
     def _runtime_output_root(self):
@@ -816,9 +744,7 @@ class Task(WorkItem):
         The path of an empty file that is used to determine if the task has been started.
         Only used by the ray executor.
         """
-        return os.path.join(
-            self.ctx.started_task_dir, f"{self.node_id}.{self.key}.{self.retry_count}"
-        )
+        return os.path.join(self.ctx.started_task_dir, f"{self.node_id}.{self.key}.{self.retry_count}")
 
     @property
     def ray_dataset_path(self) -> str:
@@ -827,30 +753,22 @@ class Task(WorkItem):
         If this file exists, the task is considered finished.
         Only used by the ray executor.
         """
-        return os.path.join(
-            self.ctx.completed_task_dir, str(self.node_id), f"{self.key}.pickle"
-        )
+        return os.path.join(self.ctx.completed_task_dir, str(self.node_id), f"{self.key}.pickle")
 
     @property
     def random_seed_bytes(self) -> bytes:
-        return self.id.to_bytes(4, sys.byteorder) + self.ctx.random_seed.to_bytes(
-            RAND_SEED_BYTE_LEN, sys.byteorder
-        )
+        return self.id.to_bytes(4, sys.byteorder) + self.ctx.random_seed.to_bytes(RAND_SEED_BYTE_LEN, sys.byteorder)
 
     @property
     def numpy_random_gen(self):
         if self._np_randgen is None:
-            self._np_randgen = np.random.default_rng(
-                int.from_bytes(self.random_seed_bytes, sys.byteorder)
-            )
+            self._np_randgen = np.random.default_rng(int.from_bytes(self.random_seed_bytes, sys.byteorder))
         return self._np_randgen
 
     @property
     def python_random_gen(self):
         if self._py_randgen is None:
-            self._py_randgen = random.Random(
-                int.from_bytes(self.random_seed_bytes, sys.byteorder)
-            )
+            self._py_randgen = random.Random(int.from_bytes(self.random_seed_bytes, sys.byteorder))
         return self._py_randgen
 
     def random_uint32(self) -> int:
@@ -866,10 +784,7 @@ class Task(WorkItem):
     def inject_fault(self):
         if self.ctx.fault_inject_prob > 0 and self.fail_count <= 1:
             random_value = self.random_float()
-            if (
-                random_value < self.uniform_failure_prob
-                and random_value < self.ctx.fault_inject_prob
-            ):
+            if random_value < self.uniform_failure_prob and random_value < self.ctx.fault_inject_prob:
                 raise InjectedFault(
                     f"inject fault to {repr(self)}, uniform_failure_prob={self.uniform_failure_prob:.6f}, fault_inject_prob={self.ctx.fault_inject_prob:.6f}"
                 )
@@ -890,21 +805,15 @@ class Task(WorkItem):
 
         if num_row_groups > max_num_row_groups:
             parquet_row_group_size = round_up(
-                clamp_row_group_size(
-                    num_rows // max_num_row_groups, maxval=max_row_group_size
-                ),
+                clamp_row_group_size(num_rows // max_num_row_groups, maxval=max_row_group_size),
                 KB,
             )
         avg_row_size = self.compute_avg_row_size(nbytes, num_rows)
-        parquet_row_group_size = round_up(
-            min(parquet_row_group_size, max_row_group_bytes // avg_row_size), KB
-        )
+        parquet_row_group_size = round_up(min(parquet_row_group_size, max_row_group_bytes // avg_row_size), KB)
 
         if self.parquet_row_group_size != parquet_row_group_size:
             parquet_row_group_bytes = round_up(
-                clamp_row_group_bytes(
-                    parquet_row_group_size * avg_row_size, maxval=max_row_group_bytes
-                ),
+                clamp_row_group_bytes(parquet_row_group_size * avg_row_size, maxval=max_row_group_bytes),
                 MB,
             )
             logger.info(
@@ -919,19 +828,13 @@ class Task(WorkItem):
     def set_memory_limit(self, soft_limit: int, hard_limit: int):
         soft_old, hard_old = resource.getrlimit(resource.RLIMIT_DATA)
         resource.setrlimit(resource.RLIMIT_DATA, (soft_limit, hard_limit))
-        logger.debug(
-            f"updated memory limit from ({soft_old/GB:.3f}GB, {hard_old/GB:.3f}GB) to ({soft_limit/GB:.3f}GB, {hard_limit/GB:.3f}GB)"
-        )
+        logger.debug(f"updated memory limit from ({soft_old/GB:.3f}GB, {hard_old/GB:.3f}GB) to ({soft_limit/GB:.3f}GB, {hard_limit/GB:.3f}GB)")
 
     def initialize(self):
         self.inject_fault()
 
         if self._memory_limit is None:
-            self._memory_limit = np.int64(
-                self.ctx.usable_memory_size
-                * self._cpu_limit
-                // self.ctx.usable_cpu_count
-            )
+            self._memory_limit = np.int64(self.ctx.usable_memory_size * self._cpu_limit // self.ctx.usable_cpu_count)
         assert self.partition_infos, f"empty partition infos: {self}"
         os.makedirs(self.runtime_output_abspath, exist_ok=self.output_root is not None)
         os.makedirs(self.temp_abspath, exist_ok=False)
@@ -941,9 +844,7 @@ class Task(WorkItem):
                 self.perf_profile = cProfile.Profile()
                 self.perf_profile.enable()
             if self.ctx.enforce_memory_limit:
-                self.set_memory_limit(
-                    round_up(self.memory_limit * 1.2), round_up(self.memory_limit * 1.5)
-                )
+                self.set_memory_limit(round_up(self.memory_limit * 1.2), round_up(self.memory_limit * 1.5))
             if self.ctx.remove_empty_parquet:
                 for dataset in self.input_datasets:
                     if isinstance(dataset, ParquetDataSet):
@@ -952,9 +853,7 @@ class Task(WorkItem):
             logger.debug("input datasets: {}", self.input_datasets)
             logger.trace(f"final output directory: {self.final_output_abspath}")
             logger.trace(f"runtime output directory: {self.runtime_output_abspath}")
-            logger.trace(
-                f"resource limit: {self.cpu_limit} cpus, {self.gpu_limit} gpus, {self.memory_limit/GB:.3f}GB memory"
-            )
+            logger.trace(f"resource limit: {self.cpu_limit} cpus, {self.gpu_limit} gpus, {self.memory_limit/GB:.3f}GB memory")
             random.seed(self.random_seed_bytes)
             arrow.set_cpu_count(self.cpu_limit)
             arrow.set_io_thread_count(self.cpu_limit)
@@ -967,9 +866,7 @@ class Task(WorkItem):
         logger.info("finished task: {}", self)
 
         # move the task output from staging dir to output dir
-        if self.runtime_output_abspath != self.final_output_abspath and os.path.exists(
-            self.runtime_output_abspath
-        ):
+        if self.runtime_output_abspath != self.final_output_abspath and os.path.exists(self.runtime_output_abspath):
             os.makedirs(os.path.dirname(self.final_output_abspath), exist_ok=True)
             os.rename(self.runtime_output_abspath, self.final_output_abspath)
 
@@ -980,18 +877,12 @@ class Task(WorkItem):
                 with ThreadPoolExecutor(min(32, len(file_paths))) as pool:
                     file_sizes = list(pool.map(os.path.getsize, file_paths))
             except FileNotFoundError:
-                logger.warning(
-                    f"some of the output files not found: {file_paths[:3]}..."
-                )
+                logger.warning(f"some of the output files not found: {file_paths[:3]}...")
                 file_sizes = []
             return file_sizes
 
         if self.ctx.enable_diagnostic_metrics:
-            input_file_paths = [
-                path
-                for dataset in self.input_datasets
-                for path in dataset.resolved_paths
-            ]
+            input_file_paths = [path for dataset in self.input_datasets for path in dataset.resolved_paths]
             output_file_paths = self.output.resolved_paths
             for metric_name, file_paths in [
                 ("input", input_file_paths),
@@ -1000,26 +891,18 @@ class Task(WorkItem):
                 file_sizes = collect_file_sizes(file_paths)
                 if file_paths and file_sizes:
                     self.perf_metrics[f"num {metric_name} files"] += len(file_paths)
-                    self.perf_metrics[f"total {metric_name} size (MB)"] += (
-                        sum(file_sizes) / MB
-                    )
+                    self.perf_metrics[f"total {metric_name} size (MB)"] += sum(file_sizes) / MB
 
         self.perf_metrics["elapsed wall time (secs)"] += self.elapsed_time
         if not self.exec_on_scheduler:
             resource_usage = resource.getrusage(resource.RUSAGE_SELF)
-            self.perf_metrics["max resident set size (MB)"] += (
-                resource_usage.ru_maxrss / 1024
-            )
+            self.perf_metrics["max resident set size (MB)"] += resource_usage.ru_maxrss / 1024
             self.perf_metrics["user mode cpu time (secs)"] += resource_usage.ru_utime
             self.perf_metrics["system mode cpu time (secs)"] += resource_usage.ru_stime
-            logger.debug(
-                f"{self.key} perf metrics:{os.linesep}{os.linesep.join(f'{name}: {value}' for name, value in self.perf_metrics.items())}"
-            )
+            logger.debug(f"{self.key} perf metrics:{os.linesep}{os.linesep.join(f'{name}: {value}' for name, value in self.perf_metrics.items())}")
 
         if self.perf_profile is not None and self.elapsed_time > 3:
-            logger.debug(
-                f"{self.key} perf profile:{os.linesep}{cprofile_to_string(self.perf_profile)}"
-            )
+            logger.debug(f"{self.key} perf profile:{os.linesep}{cprofile_to_string(self.perf_profile)}")
 
     def cleanup(self):
         if self.perf_profile is not None:
@@ -1038,28 +921,17 @@ class Task(WorkItem):
 
         def is_primitive_iterable(obj: Any):
             if isinstance(obj, dict):
-                return all(
-                    is_primitive(key) and is_primitive(value)
-                    for key, value in obj.items()
-                )
+                return all(is_primitive(key) and is_primitive(value) for key, value in obj.items())
             elif isinstance(obj, Iterable):
                 return all(is_primitive(elem) for elem in obj)
             return False
 
         if hasattr(self, "__dict__"):
             complex_attrs = [
-                attr
-                for attr, obj in vars(self).items()
-                if not (
-                    attr in self._pristine_attrs
-                    or is_primitive(obj)
-                    or is_primitive_iterable(obj)
-                )
+                attr for attr, obj in vars(self).items() if not (attr in self._pristine_attrs or is_primitive(obj) or is_primitive_iterable(obj))
             ]
             if complex_attrs:
-                logger.debug(
-                    f"removing complex attributes not explicitly declared in __slots__: {complex_attrs}"
-                )
+                logger.debug(f"removing complex attributes not explicitly declared in __slots__: {complex_attrs}")
                 for attr in complex_attrs:
                     delattr(self, attr)
 
@@ -1087,9 +959,7 @@ class Task(WorkItem):
         ```
         """
         self.inject_fault()
-        assert (
-            self._timer_start is not None or metric_name is None
-        ), f"timer not started, cannot save '{metric_name}'"
+        assert self._timer_start is not None or metric_name is None, f"timer not started, cannot save '{metric_name}'"
         if self._timer_start is None or metric_name is None:
             self._timer_start = time.time()
             return 0.0
@@ -1141,13 +1011,9 @@ class Task(WorkItem):
             while os.path.exists(task.ray_marker_path):
                 task.retry_count += 1
                 if task.retry_count > DEFAULT_MAX_RETRY_COUNT:
-                    raise RuntimeError(
-                        f"task {task.key} failed after {task.retry_count} retries"
-                    )
+                    raise RuntimeError(f"task {task.key} failed after {task.retry_count} retries")
             if task.retry_count > 0:
-                logger.warning(
-                    f"task {task.key} is being retried for the {task.retry_count}th time"
-                )
+                logger.warning(f"task {task.key} is being retried for the {task.retry_count}th time")
             # create the marker file
             Path(task.ray_marker_path).touch()
 
@@ -1157,9 +1023,7 @@ class Task(WorkItem):
             # execute the task
             status = task.exec()
             if status != WorkStatus.SUCCEED:
-                raise task.exception or RuntimeError(
-                    f"task {task.key} failed with status {status}"
-                )
+                raise task.exception or RuntimeError(f"task {task.key} failed with status {status}")
 
             # dump the output dataset atomically
             os.makedirs(os.path.dirname(task.ray_dataset_path), exist_ok=True)
@@ -1180,14 +1044,9 @@ class Task(WorkItem):
             #       because dataset is distributed on ray
         )
         try:
-            self._dataset_ref = remote_function.remote(
-                task, *[dep.run_on_ray() for dep in self.input_deps.values()]
-            )
+            self._dataset_ref = remote_function.remote(task, *[dep.run_on_ray() for dep in self.input_deps.values()])
         except RuntimeError as e:
-            if (
-                "SimpleQueue objects should only be shared between processes through inheritance"
-                in str(e)
-            ):
+            if "SimpleQueue objects should only be shared between processes through inheritance" in str(e):
                 raise RuntimeError(
                     f"Can't pickle task '{task.key}'. Please check if your function has captured unpicklable objects. {task.location}\n"
                     f"HINT: DO NOT use externally imported loguru logger in your task. Please import it within the task."
@@ -1226,26 +1085,19 @@ class ExecSqlQueryMixin(Task):
 
     @property
     def compression_type_str(self):
-        return (
-            f"COMPRESSION '{self.parquet_compression}'"
-            if self.parquet_compression is not None
-            else "COMPRESSION 'uncompressed'"
-        )
+        return f"COMPRESSION '{self.parquet_compression}'" if self.parquet_compression is not None else "COMPRESSION 'uncompressed'"
 
     @property
     def compression_level_str(self):
         return (
             f"COMPRESSION_LEVEL {self.parquet_compression_level}"
-            if self.parquet_compression == "ZSTD"
-            and self.parquet_compression_level is not None
+            if self.parquet_compression == "ZSTD" and self.parquet_compression_level is not None
             else ""
         )
 
     @property
     def compression_options(self):
-        return ", ".join(
-            filter(None, (self.compression_type_str, self.compression_level_str))
-        )
+        return ", ".join(filter(None, (self.compression_type_str, self.compression_level_str)))
 
     def prepare_connection(self, conn: duckdb.DuckDBPyConnection):
         logger.debug(f"duckdb version: {duckdb.__version__}")
@@ -1253,9 +1105,7 @@ class ExecSqlQueryMixin(Task):
         self.exec_query(conn, f"select setseed({self.rand_seed_float})")
         # prepare connection
         effective_cpu_count = math.ceil(self.cpu_limit * self.cpu_overcommit_ratio)
-        effective_memory_size = round_up(
-            self.memory_limit * self.memory_overcommit_ratio, MB
-        )
+        effective_memory_size = round_up(self.memory_limit * self.memory_overcommit_ratio, MB)
         self.exec_query(
             conn,
             f"""
@@ -1282,9 +1132,7 @@ class ExecSqlQueryMixin(Task):
         for input_dataset in input_datasets:
             self.input_view_index += 1
             view_name = f"{INPUT_VIEW_PREFIX}_{self.id}_{self.input_view_index:06d}"
-            input_views[view_name] = (
-                f"CREATE VIEW {view_name} AS {input_dataset.sql_query_fragment(filesystem, conn)};"
-            )
+            input_views[view_name] = f"CREATE VIEW {view_name} AS {input_dataset.sql_query_fragment(filesystem, conn)};"
             logger.debug(f"create input view '{view_name}': {input_views[view_name]}")
             conn.sql(input_views[view_name])
         return list(input_views.keys())
@@ -1303,11 +1151,7 @@ class ExecSqlQueryMixin(Task):
             if log_query:
                 logger.debug(f"running sql query: {query_statement}")
             start_time = time.time()
-            query_output = conn.sql(
-                "SET enable_profiling='json';"
-                if enable_profiling
-                else "RESET enable_profiling;"
-            )
+            query_output = conn.sql("SET enable_profiling='json';" if enable_profiling else "RESET enable_profiling;")
             query_output = conn.sql(query_statement)
             elapsed_time = time.time() - start_time
             if log_query:
@@ -1332,10 +1176,7 @@ class ExecSqlQueryMixin(Task):
                 perf_metrics["num input rows"] += obj["operator_cardinality"]
                 perf_metrics["input load time (secs)"] += obj["operator_timing"]
             elif name.startswith("COPY_TO_FILE"):
-                perf_metrics["num output rows"] += sum(
-                    sum_children_metrics(child, "operator_cardinality")
-                    for child in obj["children"]
-                )
+                perf_metrics["num output rows"] += sum(sum_children_metrics(child, "operator_cardinality") for child in obj["children"])
                 perf_metrics["output dump time (secs)"] += obj["operator_timing"]
             return obj
 
@@ -1343,9 +1184,7 @@ class ExecSqlQueryMixin(Task):
             output_rows = query_output.fetchall()
             if log_output or (enable_profiling and self.ctx.enable_profiling):
                 for row in output_rows:
-                    logger.debug(
-                        f"query output:{os.linesep}{''.join(filter(None, row))}"
-                    )
+                    logger.debug(f"query output:{os.linesep}{''.join(filter(None, row))}")
             if enable_profiling:
                 _, json_str = output_rows[0]
                 json.loads(json_str, object_hook=extract_perf_metrics)
@@ -1373,9 +1212,7 @@ class DataSourceTask(Task):
     def run(self) -> bool:
         logger.info(f"added data source: {self.dataset}")
         if isinstance(self.dataset, (SqlQueryDataSet, ArrowTableDataSet)):
-            self.dataset = ParquetDataSet.create_from(
-                self.dataset.to_arrow_table(), self.runtime_output_abspath
-            )
+            self.dataset = ParquetDataSet.create_from(self.dataset.to_arrow_table(), self.runtime_output_abspath)
         return True
 
 
@@ -1397,9 +1234,7 @@ class MergeDataSetsTask(Task):
     def run(self) -> bool:
         datasets = self.input_datasets
         assert datasets, f"empty list of input datasets: {self}"
-        assert all(
-            isinstance(dataset, (DataSet, type(datasets[0]))) for dataset in datasets
-        )
+        assert all(isinstance(dataset, (DataSet, type(datasets[0]))) for dataset in datasets)
         self.dataset = datasets[0].merge(datasets)
         logger.info(f"created merged dataset: {self.dataset}")
         return True
@@ -1418,9 +1253,7 @@ class SplitDataSetTask(Task):
         input_deps: List[Task],
         partition_infos: List[PartitionInfo],
     ) -> None:
-        assert (
-            len(input_deps) == 1
-        ), f"wrong number of input deps for data set partition: {input_deps}"
+        assert len(input_deps) == 1, f"wrong number of input deps for data set partition: {input_deps}"
         super().__init__(ctx, input_deps, partition_infos)
         self.partition = partition_infos[-1].index
         self.npartitions = partition_infos[-1].npartitions
@@ -1440,9 +1273,7 @@ class SplitDataSetTask(Task):
         pass
 
     def run(self) -> bool:
-        self.dataset = self.input_datasets[0].partition_by_files(self.npartitions)[
-            self.partition
-        ]
+        self.dataset = self.input_datasets[0].partition_by_files(self.npartitions)[self.partition]
         return True
 
 
@@ -1467,9 +1298,7 @@ class PartitionProducerTask(Task):
         memory_limit: int = None,
     ) -> None:
         assert len(input_deps) == 1, f"wrong number of inputs: {input_deps}"
-        assert isinstance(
-            npartitions, int
-        ), f"npartitions is not an integer: {npartitions}"
+        assert isinstance(npartitions, int), f"npartitions is not an integer: {npartitions}"
         super().__init__(
             ctx,
             input_deps,
@@ -1485,10 +1314,7 @@ class PartitionProducerTask(Task):
         self.partitioned_datasets: List[DataSet] = None
 
     def __str__(self) -> str:
-        return (
-            super().__str__()
-            + f", npartitions={self.npartitions}, dimension={self.dimension}"
-        )
+        return super().__str__() + f", npartitions={self.npartitions}, dimension={self.dimension}"
 
     def _create_empty_file(self, partition_idx: int, dataset: DataSet) -> str:
         """
@@ -1523,14 +1349,12 @@ class PartitionProducerTask(Task):
                 if not isinstance(self, HashPartitionTask)
                 else [
                     PartitionInfo(partition_idx, self.npartitions, self.dimension),
-                    PartitionInfo(
-                        partition_idx, self.npartitions, self.data_partition_column
-                    ),
+                    PartitionInfo(partition_idx, self.npartitions, self.data_partition_column),
                 ]
             )
-            schema_with_metadata = filter_schema(
-                dataset_schema, excluded_cols=GENERATED_COLUMNS
-            ).with_metadata(self.parquet_kv_metadata_bytes(extra_partitions))
+            schema_with_metadata = filter_schema(dataset_schema, excluded_cols=GENERATED_COLUMNS).with_metadata(
+                self.parquet_kv_metadata_bytes(extra_partitions)
+            )
             empty_file_path = Path(empty_file_prefix + ".parquet")
             parquet.ParquetWriter(empty_file_path, schema_with_metadata).close()
         else:
@@ -1550,41 +1374,27 @@ class PartitionProducerTask(Task):
         else:
             # Create an empty file for each empty partition.
             # This is to ensure that partition consumers have at least one file to read.
-            empty_partitions = [
-                idx for idx, empty in enumerate(is_empty_partition) if empty
-            ]
-            nonempty_partitions = [
-                idx for idx, empty in enumerate(is_empty_partition) if not empty
-            ]
+            empty_partitions = [idx for idx, empty in enumerate(is_empty_partition) if empty]
+            nonempty_partitions = [idx for idx, empty in enumerate(is_empty_partition) if not empty]
             first_nonempty_dataset = self.partitioned_datasets[nonempty_partitions[0]]
             if empty_partitions:
                 with ThreadPoolExecutor(self.cpu_limit) as pool:
                     empty_file_paths = list(
                         pool.map(
-                            lambda idx: self._create_empty_file(
-                                idx, first_nonempty_dataset
-                            ),
+                            lambda idx: self._create_empty_file(idx, first_nonempty_dataset),
                             empty_partitions,
                         )
                     )
-                    for partition_idx, empty_file_path in zip(
-                        empty_partitions, empty_file_paths
-                    ):
-                        self.partitioned_datasets[partition_idx].reset(
-                            [empty_file_path], self.runtime_output_abspath
-                        )
-                    logger.debug(
-                        f"created empty output files in partitions {empty_partitions} of {repr(self)}: {empty_file_paths[:3]}..."
-                    )
+                    for partition_idx, empty_file_path in zip(empty_partitions, empty_file_paths):
+                        self.partitioned_datasets[partition_idx].reset([empty_file_path], self.runtime_output_abspath)
+                    logger.debug(f"created empty output files in partitions {empty_partitions} of {repr(self)}: {empty_file_paths[:3]}...")
 
         # reset root_dir from runtime_output_abspath to final_output_abspath
         for dataset in self.partitioned_datasets:
             # XXX: if the task has output in `runtime_output_abspath`,
             #      `root_dir` must be set and all row ranges must be full ranges.
             if dataset.root_dir == self.runtime_output_abspath:
-                dataset.reset(
-                    dataset.paths, self.final_output_abspath, dataset.recursive
-                )
+                dataset.reset(dataset.paths, self.final_output_abspath, dataset.recursive)
             # XXX: otherwise, we assume there is no output in `runtime_output_abspath`.
             #      do nothing to the dataset.
         self.dataset = PartitionedDataSet(self.partitioned_datasets)
@@ -1628,9 +1438,7 @@ class RepeatPartitionProducerTask(PartitionProducerTask):
         pass
 
     def run(self) -> bool:
-        self.partitioned_datasets = [
-            self.input_datasets[0] for _ in range(self.npartitions)
-        ]
+        self.partitioned_datasets = [self.input_datasets[0] for _ in range(self.npartitions)]
         return True
 
 
@@ -1662,9 +1470,7 @@ class UserDefinedPartitionProducerTask(PartitionProducerTask):
 
     def run(self) -> bool:
         try:
-            self.partitioned_datasets = self.partition_func(
-                self.ctx, self.input_datasets[0]
-            )
+            self.partitioned_datasets = self.partition_func(self.ctx, self.input_datasets[0])
             return True
         finally:
             self.partition_func = None
@@ -1715,13 +1521,9 @@ class EvenlyDistributedPartitionProducerTask(PartitionProducerTask):
             self.partition_by_rows and not isinstance(input_dataset, ParquetDataSet)
         ), f"Only parquet dataset supports partition by rows, found: {input_dataset}"
         if isinstance(input_dataset, ParquetDataSet) and self.partition_by_rows:
-            self.partitioned_datasets = input_dataset.partition_by_rows(
-                self.npartitions, self.random_shuffle
-            )
+            self.partitioned_datasets = input_dataset.partition_by_rows(self.npartitions, self.random_shuffle)
         else:
-            self.partitioned_datasets = input_dataset.partition_by_files(
-                self.npartitions, self.random_shuffle
-            )
+            self.partitioned_datasets = input_dataset.partition_by_files(self.npartitions, self.random_shuffle)
         return True
 
 
@@ -1758,12 +1560,8 @@ class LoadPartitionedDataSetProducerTask(PartitionProducerTask):
 
     def run(self) -> bool:
         input_dataset = self.input_datasets[0]
-        assert isinstance(
-            input_dataset, ParquetDataSet
-        ), f"Not parquet dataset: {input_dataset}"
-        self.partitioned_datasets = input_dataset.load_partitioned_datasets(
-            self.npartitions, self.data_partition_column, self.hive_partitioning
-        )
+        assert isinstance(input_dataset, ParquetDataSet), f"Not parquet dataset: {input_dataset}"
+        self.partitioned_datasets = input_dataset.load_partitioned_datasets(self.npartitions, self.data_partition_column, self.hive_partitioning)
         return True
 
 
@@ -1801,12 +1599,8 @@ class PartitionConsumerTask(Task):
     def run(self) -> bool:
         # Build the dataset only after all `input_deps` finished, since `input_deps` could be tried multiple times.
         # Consumers always follow producers, so the input is a list of partitioned datasets.
-        assert all(
-            isinstance(dataset, PartitionedDataSet) for dataset in self.input_datasets
-        )
-        datasets = [
-            dataset[self.last_partition.index] for dataset in self.input_datasets
-        ]
+        assert all(isinstance(dataset, PartitionedDataSet) for dataset in self.input_datasets)
+        datasets = [dataset[self.last_partition.index] for dataset in self.input_datasets]
         self.dataset = datasets[0].merge(datasets)
 
         if self.ctx.remove_empty_parquet and isinstance(self.dataset, ParquetDataSet):
@@ -1938,9 +1732,7 @@ class ArrowComputeTask(ExecSqlQueryMixin, Task):
         )
         self.process_func = process_func
         self.parquet_row_group_size = parquet_row_group_size
-        self.parquet_row_group_bytes = clamp_row_group_bytes(
-            parquet_row_group_size * 4 * KB
-        )
+        self.parquet_row_group_bytes = clamp_row_group_bytes(parquet_row_group_size * 4 * KB)
         self.parquet_dictionary_encoding = parquet_dictionary_encoding
         self.parquet_compression = parquet_compression
         self.parquet_compression_level = parquet_compression_level
@@ -1951,14 +1743,10 @@ class ArrowComputeTask(ExecSqlQueryMixin, Task):
         self.process_func = None
         super().clean_complex_attrs()
 
-    def _call_process(
-        self, runtime_ctx: RuntimeContext, input_tables: List[arrow.Table]
-    ) -> arrow.Table:
+    def _call_process(self, runtime_ctx: RuntimeContext, input_tables: List[arrow.Table]) -> arrow.Table:
         return self.process(runtime_ctx, input_tables)
 
-    def process(
-        self, runtime_ctx: RuntimeContext, input_tables: List[arrow.Table]
-    ) -> arrow.Table:
+    def process(self, runtime_ctx: RuntimeContext, input_tables: List[arrow.Table]) -> arrow.Table:
         """
         This method can be overridden in subclass of `ArrowComputeTask`.
 
@@ -1983,25 +1771,16 @@ class ArrowComputeTask(ExecSqlQueryMixin, Task):
                 return True
 
             if self.use_duckdb_reader:
-                conn = duckdb.connect(
-                    database=":memory:", config={"allow_unsigned_extensions": "true"}
-                )
+                conn = duckdb.connect(database=":memory:", config={"allow_unsigned_extensions": "true"})
                 self.prepare_connection(conn)
 
-            input_tables = [
-                dataset.to_arrow_table(max_workers=self.cpu_limit, conn=conn)
-                for dataset in self.input_datasets
-            ]
-            self.perf_metrics["num input rows"] += sum(
-                table.num_rows for table in input_tables
-            )
+            input_tables = [dataset.to_arrow_table(max_workers=self.cpu_limit, conn=conn) for dataset in self.input_datasets]
+            self.perf_metrics["num input rows"] += sum(table.num_rows for table in input_tables)
             self.add_elapsed_time("input load time (secs)")
             if conn is not None:
                 conn.close()
 
-            output_table = self._call_process(
-                self.ctx.set_current_task(self), input_tables
-            )
+            output_table = self._call_process(self.ctx.set_current_task(self), input_tables)
             self.add_elapsed_time("compute time (secs)")
 
             return self.dump_output(output_table)
@@ -2025,11 +1804,7 @@ class ArrowComputeTask(ExecSqlQueryMixin, Task):
             output_table.replace_schema_metadata(self.parquet_kv_metadata_bytes()),
             self.runtime_output_abspath,
             self.output_filename,
-            compression=(
-                self.parquet_compression
-                if self.parquet_compression is not None
-                else "NONE"
-            ),
+            compression=(self.parquet_compression if self.parquet_compression is not None else "NONE"),
             compression_level=self.parquet_compression_level,
             row_group_size=self.parquet_row_group_size,
             row_group_bytes=self.parquet_row_group_bytes,
@@ -2089,9 +1864,7 @@ class ArrowStreamTask(ExecSqlQueryMixin, Task):
             "streaming_batch_count",
         )
 
-        def __init__(
-            self, streaming_batch_size: int, streaming_batch_count: int
-        ) -> None:
+        def __init__(self, streaming_batch_size: int, streaming_batch_count: int) -> None:
             self.last_batch_indices: List[int] = None
             self.input_batch_offsets: List[int] = None
             self.streaming_output_paths: List[str] = []
@@ -2112,12 +1885,7 @@ class ArrowStreamTask(ExecSqlQueryMixin, Task):
                 self.last_batch_indices = [-1] * len(batch_indices)
             if self.input_batch_offsets is None:
                 self.input_batch_offsets = [0] * len(batch_indices)
-            self.input_batch_offsets = [
-                i + j - k
-                for i, j, k in zip(
-                    self.input_batch_offsets, batch_indices, self.last_batch_indices
-                )
-            ]
+            self.input_batch_offsets = [i + j - k for i, j, k in zip(self.input_batch_offsets, batch_indices, self.last_batch_indices)]
             self.last_batch_indices = batch_indices
 
         def reset(self):
@@ -2129,9 +1897,7 @@ class ArrowStreamTask(ExecSqlQueryMixin, Task):
         ctx: RuntimeContext,
         input_deps: List[Task],
         partition_infos: List[PartitionInfo],
-        process_func: Callable[
-            [RuntimeContext, List[arrow.RecordBatchReader]], Iterable[arrow.Table]
-        ] = None,
+        process_func: Callable[[RuntimeContext, List[arrow.RecordBatchReader]], Iterable[arrow.Table]] = None,
         background_io_thread=True,
         streaming_batch_size: int = DEFAULT_BATCH_SIZE,
         secs_checkpoint_interval: int = None,
@@ -2161,16 +1927,12 @@ class ArrowStreamTask(ExecSqlQueryMixin, Task):
         self.streaming_batch_size = streaming_batch_size
         self.streaming_batch_count = 1
         self.parquet_row_group_size = parquet_row_group_size
-        self.parquet_row_group_bytes = clamp_row_group_bytes(
-            parquet_row_group_size * 4 * KB
-        )
+        self.parquet_row_group_bytes = clamp_row_group_bytes(parquet_row_group_size * 4 * KB)
         self.parquet_dictionary_encoding = parquet_dictionary_encoding
         self.parquet_compression = parquet_compression
         self.parquet_compression_level = parquet_compression_level
         self.use_duckdb_reader = use_duckdb_reader
-        self.secs_checkpoint_interval = (
-            secs_checkpoint_interval or self.ctx.secs_executor_probe_timeout
-        )
+        self.secs_checkpoint_interval = secs_checkpoint_interval or self.ctx.secs_executor_probe_timeout
         self.runtime_state: Optional[ArrowStreamTask.RuntimeState] = None
 
     def __str__(self) -> str:
@@ -2189,9 +1951,7 @@ class ArrowStreamTask(ExecSqlQueryMixin, Task):
                 if not path.startswith(self.runtime_output_abspath):
                     os.link(
                         path,
-                        os.path.join(
-                            self.runtime_output_abspath, os.path.basename(path)
-                        ),
+                        os.path.join(self.runtime_output_abspath, os.path.basename(path)),
                     )
             self.runtime_state = None
         super().finalize()
@@ -2201,9 +1961,7 @@ class ArrowStreamTask(ExecSqlQueryMixin, Task):
         self.process_func = None
         super().clean_complex_attrs()
 
-    def _wrap_output(
-        self, output: Union[arrow.Table, StreamOutput], batch_indices: List[int] = None
-    ) -> StreamOutput:
+    def _wrap_output(self, output: Union[arrow.Table, StreamOutput], batch_indices: List[int] = None) -> StreamOutput:
         if isinstance(output, StreamOutput):
             assert len(output.batch_indices) == 0 or len(output.batch_indices) == len(
                 self.input_deps
@@ -2213,15 +1971,11 @@ class ArrowStreamTask(ExecSqlQueryMixin, Task):
             assert isinstance(output, arrow.Table)
             return StreamOutput(output, batch_indices)
 
-    def _call_process(
-        self, runtime_ctx: RuntimeContext, input_readers: List[arrow.RecordBatchReader]
-    ) -> Iterable[StreamOutput]:
+    def _call_process(self, runtime_ctx: RuntimeContext, input_readers: List[arrow.RecordBatchReader]) -> Iterable[StreamOutput]:
         for output in self.process(runtime_ctx, input_readers):
             yield self._wrap_output(output)
 
-    def process(
-        self, runtime_ctx: RuntimeContext, input_readers: List[arrow.RecordBatchReader]
-    ) -> Iterable[arrow.Table]:
+    def process(self, runtime_ctx: RuntimeContext, input_readers: List[arrow.RecordBatchReader]) -> Iterable[arrow.Table]:
         """
         This method can be overridden in subclass of `ArrowStreamTask`.
 
@@ -2238,26 +1992,20 @@ class ArrowStreamTask(ExecSqlQueryMixin, Task):
         """
         return self.process_func(runtime_ctx, input_readers)
 
-    def restore_input_state(
-        self, runtime_state: RuntimeState, input_readers: List[arrow.RecordBatchReader]
-    ):
+    def restore_input_state(self, runtime_state: RuntimeState, input_readers: List[arrow.RecordBatchReader]):
         logger.info(f"restore input state to: {runtime_state}")
         assert len(runtime_state.input_batch_offsets) == len(
             input_readers
         ), f"num of batch offsets {len(runtime_state.input_batch_offsets)} not equal to num of input readers {len(input_readers)}"
 
-        for batch_offset, input_reader in zip(
-            runtime_state.input_batch_offsets, input_readers
-        ):
+        for batch_offset, input_reader in zip(runtime_state.input_batch_offsets, input_readers):
             if batch_offset <= 0:
                 continue
             for (
                 batch_index,
                 input_batch,
             ) in enumerate(input_reader):
-                logger.debug(
-                    f"skipped input batch #{batch_index}: {input_batch.num_rows} rows"
-                )
+                logger.debug(f"skipped input batch #{batch_index}: {input_batch.num_rows} rows")
                 if batch_index + 1 == batch_offset:
                     break
             assert batch_index + 1 <= batch_offset
@@ -2267,31 +2015,15 @@ class ArrowStreamTask(ExecSqlQueryMixin, Task):
         if self.skip_when_any_input_empty:
             return True
 
-        input_row_ranges = [
-            dataset.resolved_row_ranges
-            for dataset in self.input_datasets
-            if isinstance(dataset, ParquetDataSet)
-        ]
-        input_byte_size = [
-            sum(row_range.estimated_data_size for row_range in row_ranges)
-            for row_ranges in input_row_ranges
-        ]
-        input_num_rows = [
-            sum(row_range.num_rows for row_range in row_ranges)
-            for row_ranges in input_row_ranges
-        ]
-        input_files = [
-            set(row_range.path for row_range in row_ranges)
-            for row_ranges in input_row_ranges
-        ]
+        input_row_ranges = [dataset.resolved_row_ranges for dataset in self.input_datasets if isinstance(dataset, ParquetDataSet)]
+        input_byte_size = [sum(row_range.estimated_data_size for row_range in row_ranges) for row_ranges in input_row_ranges]
+        input_num_rows = [sum(row_range.num_rows for row_range in row_ranges) for row_ranges in input_row_ranges]
+        input_files = [set(row_range.path for row_range in row_ranges) for row_ranges in input_row_ranges]
         self.perf_metrics["num input rows"] += sum(input_num_rows)
         self.perf_metrics["input data size (MB)"] += sum(input_byte_size) / MB
 
         # calculate the max streaming batch size based on memory limit
-        avg_input_row_size = sum(
-            self.compute_avg_row_size(nbytes, num_rows)
-            for nbytes, num_rows in zip(input_byte_size, input_num_rows)
-        )
+        avg_input_row_size = sum(self.compute_avg_row_size(nbytes, num_rows) for nbytes, num_rows in zip(input_byte_size, input_num_rows))
         max_batch_rows = self.max_batch_size // avg_input_row_size
 
         if self.runtime_state is None:
@@ -2312,9 +2044,7 @@ class ArrowStreamTask(ExecSqlQueryMixin, Task):
         try:
             conn = None
             if self.use_duckdb_reader:
-                conn = duckdb.connect(
-                    database=":memory:", config={"allow_unsigned_extensions": "true"}
-                )
+                conn = duckdb.connect(database=":memory:", config={"allow_unsigned_extensions": "true"})
                 self.prepare_connection(conn)
 
             input_readers = [
@@ -2326,16 +2056,12 @@ class ArrowStreamTask(ExecSqlQueryMixin, Task):
             ]
 
             if self.runtime_state is None:
-                self.runtime_state = ArrowStreamTask.RuntimeState(
-                    self.streaming_batch_size, self.streaming_batch_count
-                )
+                self.runtime_state = ArrowStreamTask.RuntimeState(self.streaming_batch_size, self.streaming_batch_count)
             else:
                 self.restore_input_state(self.runtime_state, input_readers)
                 self.runtime_state.last_batch_indices = None
 
-            output_iter = self._call_process(
-                self.ctx.set_current_task(self), input_readers
-            )
+            output_iter = self._call_process(self.ctx.set_current_task(self), input_readers)
             self.add_elapsed_time("compute time (secs)")
 
             if self.background_io_thread:
@@ -2358,9 +2084,7 @@ class ArrowStreamTask(ExecSqlQueryMixin, Task):
             self.add_elapsed_time("output dump time (secs)")
 
         create_checkpoint = False
-        last_checkpoint_time = (
-            time.time() - self.random_float() * self.secs_checkpoint_interval / 2
-        )
+        last_checkpoint_time = time.time() - self.random_float() * self.secs_checkpoint_interval / 2
 
         output: StreamOutput = next(output_iter, None)
         self.add_elapsed_time("compute time (secs)")
@@ -2389,15 +2113,9 @@ class ArrowStreamTask(ExecSqlQueryMixin, Task):
             try:
                 with parquet.ParquetWriter(
                     where=output_file,
-                    schema=buffered_output.schema.with_metadata(
-                        self.parquet_kv_metadata_bytes()
-                    ),
+                    schema=buffered_output.schema.with_metadata(self.parquet_kv_metadata_bytes()),
                     use_dictionary=self.parquet_dictionary_encoding,
-                    compression=(
-                        self.parquet_compression
-                        if self.parquet_compression is not None
-                        else "NONE"
-                    ),
+                    compression=(self.parquet_compression if self.parquet_compression is not None else "NONE"),
                     compression_level=self.parquet_compression_level,
                     write_batch_size=max(16 * 1024, self.parquet_row_group_size // 8),
                     data_page_size=max(64 * MB, self.parquet_row_group_bytes // 8),
@@ -2406,30 +2124,17 @@ class ArrowStreamTask(ExecSqlQueryMixin, Task):
                     while (output := next(output_iter, None)) is not None:
                         self.add_elapsed_time("compute time (secs)")
 
-                        if (
-                            buffered_output.num_rows + output.output_table.num_rows
-                            < self.parquet_row_group_size
-                        ):
-                            buffered_output = arrow.concat_tables(
-                                (buffered_output, output.output_table)
-                            )
+                        if buffered_output.num_rows + output.output_table.num_rows < self.parquet_row_group_size:
+                            buffered_output = arrow.concat_tables((buffered_output, output.output_table))
                         else:
                             write_table(writer, buffered_output)
                             buffered_output = output.output_table
 
-                        periodic_checkpoint = (
-                            bool(output.batch_indices)
-                            and (time.time() - last_checkpoint_time)
-                            >= self.secs_checkpoint_interval
-                        )
-                        create_checkpoint = (
-                            output.force_checkpoint or periodic_checkpoint
-                        )
+                        periodic_checkpoint = bool(output.batch_indices) and (time.time() - last_checkpoint_time) >= self.secs_checkpoint_interval
+                        create_checkpoint = output.force_checkpoint or periodic_checkpoint
 
                         if create_checkpoint:
-                            self.runtime_state.update_batch_offsets(
-                                output.batch_indices
-                            )
+                            self.runtime_state.update_batch_offsets(output.batch_indices)
                             last_checkpoint_time = time.time()
                             break
 
@@ -2463,72 +2168,41 @@ class ArrowBatchTask(ArrowStreamTask):
     def max_batch_size(self) -> int:
         return self._memory_limit // 3
 
-    def _call_process(
-        self, runtime_ctx: RuntimeContext, input_readers: List[arrow.RecordBatchReader]
-    ) -> Iterable[arrow.Table]:
+    def _call_process(self, runtime_ctx: RuntimeContext, input_readers: List[arrow.RecordBatchReader]) -> Iterable[arrow.Table]:
         with contextlib.ExitStack() as stack:
-            opened_readers = [
-                stack.enter_context(
-                    ConcurrentIter(reader) if self.background_io_thread else reader
-                )
-                for reader in input_readers
-            ]
-            for batch_index, input_batches in enumerate(
-                itertools.zip_longest(*opened_readers, fillvalue=None)
-            ):
+            opened_readers = [stack.enter_context(ConcurrentIter(reader) if self.background_io_thread else reader) for reader in input_readers]
+            for batch_index, input_batches in enumerate(itertools.zip_longest(*opened_readers, fillvalue=None)):
                 input_tables = [
-                    (
-                        reader.schema.empty_table()
-                        if batch is None
-                        else arrow.Table.from_batches([batch], reader.schema)
-                    )
+                    (reader.schema.empty_table() if batch is None else arrow.Table.from_batches([batch], reader.schema))
                     for reader, batch in zip(input_readers, input_batches)
                 ]
                 output_table = self._process_batches(runtime_ctx, input_tables)
-                yield self._wrap_output(
-                    output_table, [batch_index] * len(input_batches)
-                )
+                yield self._wrap_output(output_table, [batch_index] * len(input_batches))
 
-    def _process_batches(
-        self, runtime_ctx: RuntimeContext, input_tables: List[arrow.Table]
-    ) -> arrow.Table:
+    def _process_batches(self, runtime_ctx: RuntimeContext, input_tables: List[arrow.Table]) -> arrow.Table:
         return self.process(runtime_ctx, input_tables)
 
-    def process(
-        self, runtime_ctx: RuntimeContext, input_tables: List[arrow.Table]
-    ) -> arrow.Table:
+    def process(self, runtime_ctx: RuntimeContext, input_tables: List[arrow.Table]) -> arrow.Table:
         return self.process_func(runtime_ctx, input_tables)
 
 
 class PandasComputeTask(ArrowComputeTask):
-    def _call_process(
-        self, runtime_ctx: RuntimeContext, input_tables: List[arrow.Table]
-    ) -> arrow.Table:
+    def _call_process(self, runtime_ctx: RuntimeContext, input_tables: List[arrow.Table]) -> arrow.Table:
         input_dfs = [table.to_pandas() for table in input_tables]
         output_df = self.process(runtime_ctx, input_dfs)
-        return (
-            arrow.Table.from_pandas(output_df, preserve_index=False)
-            if output_df is not None
-            else None
-        )
+        return arrow.Table.from_pandas(output_df, preserve_index=False) if output_df is not None else None
 
-    def process(
-        self, runtime_ctx: RuntimeContext, input_dfs: List[pd.DataFrame]
-    ) -> pd.DataFrame:
+    def process(self, runtime_ctx: RuntimeContext, input_dfs: List[pd.DataFrame]) -> pd.DataFrame:
         return self.process_func(runtime_ctx, input_dfs)
 
 
 class PandasBatchTask(ArrowBatchTask):
-    def _process_batches(
-        self, runtime_ctx: RuntimeContext, input_tables: List[arrow.Table]
-    ) -> arrow.Table:
+    def _process_batches(self, runtime_ctx: RuntimeContext, input_tables: List[arrow.Table]) -> arrow.Table:
         input_dfs = [table.to_pandas() for table in input_tables]
         output_df = self.process(runtime_ctx, input_dfs)
         return arrow.Table.from_pandas(output_df, preserve_index=False)
 
-    def process(
-        self, runtime_ctx: RuntimeContext, input_dfs: List[pd.DataFrame]
-    ) -> pd.DataFrame:
+    def process(self, runtime_ctx: RuntimeContext, input_dfs: List[pd.DataFrame]) -> pd.DataFrame:
         return self.process_func(runtime_ctx, input_dfs)
 
 
@@ -2593,25 +2267,17 @@ class SqlEngineTask(ExecSqlQueryMixin, Task):
         self.batched_processing = batched_processing and len(self.input_deps) == 1
         self.enable_temp_directory = enable_temp_directory
         self.parquet_row_group_size = parquet_row_group_size
-        self.parquet_row_group_bytes = clamp_row_group_bytes(
-            parquet_row_group_size * 4 * KB
-        )
+        self.parquet_row_group_bytes = clamp_row_group_bytes(parquet_row_group_size * 4 * KB)
         self.parquet_dictionary_encoding = parquet_dictionary_encoding
         self.parquet_compression = parquet_compression
         self.parquet_compression_level = parquet_compression_level
 
     def __str__(self) -> str:
-        return (
-            super().__str__()
-            + f", sql_query=<{self.oneline_query[:100]}...>, udfs={self.udfs}, batched_processing={self.batched_processing}"
-        )
+        return super().__str__() + f", sql_query=<{self.oneline_query[:100]}...>, udfs={self.udfs}, batched_processing={self.batched_processing}"
 
     @property
     def oneline_query(self) -> str:
-        return "; ".join(
-            " ".join(filter(None, map(str.strip, query.splitlines())))
-            for query in self.sql_queries
-        )
+        return "; ".join(" ".join(filter(None, map(str.strip, query.splitlines()))) for query in self.sql_queries)
 
     @property
     def max_batch_size(self) -> int:
@@ -2625,22 +2291,13 @@ class SqlEngineTask(ExecSqlQueryMixin, Task):
         if self.skip_when_any_input_empty:
             return True
 
-        if self.batched_processing and isinstance(
-            self.input_datasets[0], ParquetDataSet
-        ):
-            input_batches = [
-                [batch]
-                for batch in self.input_datasets[0].partition_by_size(
-                    self.max_batch_size
-                )
-            ]
+        if self.batched_processing and isinstance(self.input_datasets[0], ParquetDataSet):
+            input_batches = [[batch] for batch in self.input_datasets[0].partition_by_size(self.max_batch_size)]
         else:
             input_batches = [self.input_datasets]
 
         for batch_index, input_batch in enumerate(input_batches):
-            with duckdb.connect(
-                database=":memory:", config={"allow_unsigned_extensions": "true"}
-            ) as conn:
+            with duckdb.connect(database=":memory:", config={"allow_unsigned_extensions": "true"}) as conn:
                 self.prepare_connection(conn)
                 self.process_batch(batch_index, input_batch, conn)
 
@@ -2656,13 +2313,9 @@ class SqlEngineTask(ExecSqlQueryMixin, Task):
         input_views = self.create_input_views(conn, input_datasets)
 
         if isinstance(self.parquet_dictionary_encoding, bool):
-            dictionary_encoding_cfg = (
-                "DICTIONARY_ENCODING TRUE," if self.parquet_dictionary_encoding else ""
-            )
+            dictionary_encoding_cfg = "DICTIONARY_ENCODING TRUE," if self.parquet_dictionary_encoding else ""
         else:
-            dictionary_encoding_cfg = "DICTIONARY_ENCODING ({}),".format(
-                ", ".join(self.parquet_dictionary_encoding)
-            )
+            dictionary_encoding_cfg = "DICTIONARY_ENCODING ({}),".format(", ".join(self.parquet_dictionary_encoding))
 
         for query_index, sql_query in enumerate(self.sql_queries):
             last_query = query_index + 1 == len(self.sql_queries)
@@ -2709,11 +2362,7 @@ class SqlEngineTask(ExecSqlQueryMixin, Task):
       OVERWRITE_OR_IGNORE true)
       """
 
-            self.merge_metrics(
-                self.exec_query(
-                    conn, f"EXPLAIN ANALYZE {sql_query}", enable_profiling=True
-                )
-            )
+            self.merge_metrics(self.exec_query(conn, f"EXPLAIN ANALYZE {sql_query}", enable_profiling=True))
 
 
 class HashPartitionTask(PartitionProducerTask):
@@ -2770,9 +2419,7 @@ class HashPartitionTask(PartitionProducerTask):
         self.use_parquet_writer = use_parquet_writer
         self.hive_partitioning = hive_partitioning
         self.parquet_row_group_size = parquet_row_group_size
-        self.parquet_row_group_bytes = clamp_row_group_bytes(
-            parquet_row_group_size * 4 * KB
-        )
+        self.parquet_row_group_bytes = clamp_row_group_bytes(parquet_row_group_size * 4 * KB)
         self.parquet_dictionary_encoding = parquet_dictionary_encoding
         self.parquet_compression = parquet_compression
         self.parquet_compression_level = parquet_compression_level
@@ -2795,15 +2442,10 @@ class HashPartitionTask(PartitionProducerTask):
         self._file_writer_closed = True
 
     def __str__(self) -> str:
-        return (
-            super().__str__()
-            + f", hash_columns={self.hash_columns}, data_partition_column={self.data_partition_column}"
-        )
+        return super().__str__() + f", hash_columns={self.hash_columns}, data_partition_column={self.data_partition_column}"
 
     @staticmethod
-    def create(
-        engine_type: Literal["duckdb", "arrow"], *args, **kwargs
-    ) -> "HashPartitionTask":
+    def create(engine_type: Literal["duckdb", "arrow"], *args, **kwargs) -> "HashPartitionTask":
         if engine_type == "duckdb":
             return HashPartitionDuckDbTask(*args, *kwargs)
         if engine_type == "arrow":
@@ -2820,9 +2462,7 @@ class HashPartitionTask(PartitionProducerTask):
             4 * MB,
             round_up(min(16 * GB, self.max_batch_size) // self.npartitions, 16 * KB),
         )
-        return (
-            write_buffer_size if write_buffer_size >= 128 * KB else -1
-        )  # disable write buffer if too small
+        return write_buffer_size if write_buffer_size >= 128 * KB else -1  # disable write buffer if too small
 
     @property
     def num_workers(self) -> int:
@@ -2847,16 +2487,8 @@ class HashPartitionTask(PartitionProducerTask):
         self.add_elapsed_time()
         self._wait_pending_writes()
         if self._io_workers is not None:
-            list(
-                self._io_workers.map(
-                    lambda w: w.close(), filter(None, self._partition_writers)
-                )
-            )
-            list(
-                self._io_workers.map(
-                    lambda f: f.close(), filter(None, self._partition_files)
-                )
-            )
+            list(self._io_workers.map(lambda w: w.close(), filter(None, self._partition_writers)))
+            list(self._io_workers.map(lambda f: f.close(), filter(None, self._partition_files)))
             self._io_workers.shutdown(wait=True)
         self.add_elapsed_time("output dump time (secs)")
 
@@ -2864,9 +2496,7 @@ class HashPartitionTask(PartitionProducerTask):
         partition_filename = f"{self.output_filename}-{partition_idx}.parquet"
         partition_path = os.path.join(self.runtime_output_abspath, partition_filename)
 
-        self._partition_files[partition_idx] = open(
-            partition_path, "wb", buffering=self.write_buffer_size
-        )
+        self._partition_files[partition_idx] = open(partition_path, "wb", buffering=self.write_buffer_size)
         output_file = self._partition_files[partition_idx]
 
         self.partitioned_datasets[partition_idx].paths.append(partition_filename)
@@ -2876,33 +2506,23 @@ class HashPartitionTask(PartitionProducerTask):
                 self.parquet_kv_metadata_bytes(
                     [
                         PartitionInfo(partition_idx, self.npartitions, self.dimension),
-                        PartitionInfo(
-                            partition_idx, self.npartitions, self.data_partition_column
-                        ),
+                        PartitionInfo(partition_idx, self.npartitions, self.data_partition_column),
                     ]
                 )
             ),
             use_dictionary=self.parquet_dictionary_encoding,
-            compression=(
-                self.parquet_compression
-                if self.parquet_compression is not None
-                else "NONE"
-            ),
+            compression=(self.parquet_compression if self.parquet_compression is not None else "NONE"),
             compression_level=self.parquet_compression_level,
             write_batch_size=max(16 * 1024, self.parquet_row_group_size // 8),
             data_page_size=max(64 * MB, self.parquet_row_group_bytes // 8),
         )
         return self._partition_writers[partition_idx]
 
-    def _write_to_partition(
-        self, partition_idx, partition, pending_write: Future = None
-    ):
+    def _write_to_partition(self, partition_idx, partition, pending_write: Future = None):
         if pending_write is not None:
             pending_write.result()
         if partition is not None:
-            writer = self._partition_writers[partition_idx] or self._create_file_writer(
-                partition_idx, partition.schema
-            )
+            writer = self._partition_writers[partition_idx] or self._create_file_writer(partition_idx, partition.schema)
             writer.write_table(partition, self.parquet_row_group_size)
 
     def _write_partitioned_tables(self, partitioned_tables):
@@ -2910,18 +2530,10 @@ class HashPartitionTask(PartitionProducerTask):
         assert len(self._pending_write_works) == self.npartitions
 
         self._pending_write_works = [
-            self.io_workers.submit(
-                self._write_to_partition, partition_idx, partition, pending_write
-            )
-            for partition_idx, (partition, pending_write) in enumerate(
-                zip(partitioned_tables, self._pending_write_works)
-            )
+            self.io_workers.submit(self._write_to_partition, partition_idx, partition, pending_write)
+            for partition_idx, (partition, pending_write) in enumerate(zip(partitioned_tables, self._pending_write_works))
         ]
-        self.perf_metrics["num output rows"] += sum(
-            partition.num_rows
-            for partition in partitioned_tables
-            if partition is not None
-        )
+        self.perf_metrics["num output rows"] += sum(partition.num_rows for partition in partitioned_tables if partition is not None)
         self._wait_pending_writes()
 
     def initialize(self):
@@ -2929,20 +2541,13 @@ class HashPartitionTask(PartitionProducerTask):
         if isinstance(self, HashPartitionDuckDbTask) and self.hive_partitioning:
             self.partitioned_datasets = [
                 ParquetDataSet(
-                    [
-                        os.path.join(
-                            f"{self.data_partition_column}={partition_idx}", "*.parquet"
-                        )
-                    ],
+                    [os.path.join(f"{self.data_partition_column}={partition_idx}", "*.parquet")],
                     root_dir=self.runtime_output_abspath,
                 )
                 for partition_idx in range(self.npartitions)
             ]
         else:
-            self.partitioned_datasets = [
-                ParquetDataSet([], root_dir=self.runtime_output_abspath)
-                for _ in range(self.npartitions)
-            ]
+            self.partitioned_datasets = [ParquetDataSet([], root_dir=self.runtime_output_abspath) for _ in range(self.npartitions)]
         self._partition_files = [None] * self.npartitions
         self._partition_writers = [None] * self.npartitions
         self._pending_write_works = [None] * self.npartitions
@@ -2972,16 +2577,12 @@ class HashPartitionTask(PartitionProducerTask):
             return True
 
         input_dataset = self.input_datasets[0]
-        assert isinstance(
-            input_dataset, ParquetDataSet
-        ), f"only parquet dataset supported, found {input_dataset}"
+        assert isinstance(input_dataset, ParquetDataSet), f"only parquet dataset supported, found {input_dataset}"
         input_paths = input_dataset.resolved_paths
         input_byte_size = input_dataset.estimated_data_size
         input_num_rows = input_dataset.num_rows
 
-        logger.info(
-            f"partitioning dataset: {len(input_paths)} files, {input_byte_size/GB:.3f}GB, {input_num_rows} rows"
-        )
+        logger.info(f"partitioning dataset: {len(input_paths)} files, {input_byte_size/GB:.3f}GB, {input_num_rows} rows")
         input_batches = input_dataset.partition_by_size(self.max_batch_size)
 
         for batch_index, input_batch in enumerate(input_batches):
@@ -2992,9 +2593,7 @@ class HashPartitionTask(PartitionProducerTask):
                 f"start to partition batch #{batch_index+1}/{len(input_batches)}: {len(input_batch.resolved_paths)} files, {batch_byte_size/GB:.3f}GB, {batch_num_rows} rows"
             )
             self.partition(batch_index, input_batch)
-            logger.info(
-                f"finished to partition batch #{batch_index+1}/{len(input_batches)}: {time.time() - batch_start_time:.3f} secs"
-            )
+            logger.info(f"finished to partition batch #{batch_index+1}/{len(input_batches)}: {time.time() - batch_start_time:.3f} secs")
 
         return True
 
@@ -3012,13 +2611,9 @@ class HashPartitionDuckDbTask(ExecSqlQueryMixin, HashPartitionTask):
             partition_query = r"SELECT * FROM {0}"
         else:
             if self.random_shuffle:
-                hash_values = (
-                    f"random() * {2147483647 // self.npartitions * self.npartitions}"
-                )
+                hash_values = f"random() * {2147483647 // self.npartitions * self.npartitions}"
             else:
-                hash_values = (
-                    f"hash( concat_ws( '##', {', '.join(self.hash_columns)} ) )"
-                )
+                hash_values = f"hash( concat_ws( '##', {', '.join(self.hash_columns)} ) )"
             partition_keys = f"CAST({hash_values} AS UINT64) % {self.npartitions}::UINT64 AS {self.data_partition_column}"
             partition_query = f"""
       SELECT *,
@@ -3029,19 +2624,13 @@ class HashPartitionDuckDbTask(ExecSqlQueryMixin, HashPartitionTask):
         return partition_query
 
     def partition(self, batch_index: int, input_dataset: ParquetDataSet):
-        with duckdb.connect(
-            database=":memory:", config={"allow_unsigned_extensions": "true"}
-        ) as conn:
+        with duckdb.connect(database=":memory:", config={"allow_unsigned_extensions": "true"}) as conn:
             self.prepare_connection(conn)
             if self.hive_partitioning:
-                self.load_input_batch(
-                    conn, batch_index, input_dataset, sort_by_partition_key=True
-                )
+                self.load_input_batch(conn, batch_index, input_dataset, sort_by_partition_key=True)
                 self.write_hive_partitions(conn, batch_index, input_dataset)
             else:
-                self.load_input_batch(
-                    conn, batch_index, input_dataset, sort_by_partition_key=True
-                )
+                self.load_input_batch(conn, batch_index, input_dataset, sort_by_partition_key=True)
                 self.write_flat_partitions(conn, batch_index, input_dataset)
 
     def load_input_batch(
@@ -3052,9 +2641,7 @@ class HashPartitionDuckDbTask(ExecSqlQueryMixin, HashPartitionTask):
         sort_by_partition_key=False,
     ):
         input_views = self.create_input_views(conn, [input_dataset])
-        partition_query = self.partition_query.format(
-            *input_views, **self.partition_infos_as_dict
-        )
+        partition_query = self.partition_query.format(*input_views, **self.partition_infos_as_dict)
         if sort_by_partition_key:
             partition_query += f" ORDER BY {self.data_partition_column}"
 
@@ -3070,12 +2657,8 @@ class HashPartitionDuckDbTask(ExecSqlQueryMixin, HashPartitionTask):
         min_partition_key, max_partition_key = conn.sql(
             f"SELECT MIN({self.data_partition_column}), MAX({self.data_partition_column}) FROM temp_query_result"
         ).fetchall()[0]
-        assert (
-            min_partition_key >= 0
-        ), f"partition key {min_partition_key} is out of range 0-{self.npartitions-1}"
-        assert (
-            max_partition_key < self.npartitions
-        ), f"partition key {max_partition_key} is out of range 0-{self.npartitions-1}"
+        assert min_partition_key >= 0, f"partition key {min_partition_key} is out of range 0-{self.npartitions-1}"
+        assert max_partition_key < self.npartitions, f"partition key {max_partition_key} is out of range 0-{self.npartitions-1}"
 
         logger.debug(f"load input dataset #{batch_index+1}: {elapsed_time:.3f} secs")
 
@@ -3105,9 +2688,7 @@ class HashPartitionDuckDbTask(ExecSqlQueryMixin, HashPartitionTask):
       {"DICTIONARY_ENCODING TRUE," if self.parquet_dictionary_encoding else ""}
       FILENAME_PATTERN '{self.output_filename}-{batch_index}.{{i}}')
     """
-        perf_metrics = self.exec_query(
-            conn, f"EXPLAIN ANALYZE {copy_query_result}", enable_profiling=True
-        )
+        perf_metrics = self.exec_query(conn, f"EXPLAIN ANALYZE {copy_query_result}", enable_profiling=True)
         self.perf_metrics["num output rows"] += perf_metrics["num output rows"]
         elapsed_time = self.add_elapsed_time("output dump time (secs)")
         logger.debug(f"write partition data #{batch_index+1}: {elapsed_time:.3f} secs")
@@ -3118,9 +2699,7 @@ class HashPartitionDuckDbTask(ExecSqlQueryMixin, HashPartitionTask):
         batch_index: int,
         input_dataset: ParquetDataSet,
     ):
-        def write_partition_data(
-            conn: duckdb.DuckDBPyConnection, partition_batch: List[Tuple[int, str]]
-        ) -> int:
+        def write_partition_data(conn: duckdb.DuckDBPyConnection, partition_batch: List[Tuple[int, str]]) -> int:
             total_num_rows = 0
             for partition_idx, partition_filter in partition_batch:
                 if self.use_parquet_writer:
@@ -3128,15 +2707,9 @@ class HashPartitionDuckDbTask(ExecSqlQueryMixin, HashPartitionTask):
                     self._write_to_partition(partition_idx, partition_data)
                     total_num_rows += partition_data.num_rows
                 else:
-                    partition_filename = (
-                        f"{self.output_filename}-{partition_idx}.{batch_index}.parquet"
-                    )
-                    partition_path = os.path.join(
-                        self.runtime_output_abspath, partition_filename
-                    )
-                    self.partitioned_datasets[partition_idx].paths.append(
-                        partition_filename
-                    )
+                    partition_filename = f"{self.output_filename}-{partition_idx}.{batch_index}.parquet"
+                    partition_path = os.path.join(self.runtime_output_abspath, partition_filename)
+                    self.partitioned_datasets[partition_idx].paths.append(partition_filename)
                     perf_metrics = self.exec_query(
                         conn,
                         f"""
@@ -3160,11 +2733,7 @@ class HashPartitionDuckDbTask(ExecSqlQueryMixin, HashPartitionTask):
                     total_num_rows += perf_metrics["num output rows"]
             return total_num_rows
 
-        column_projection = (
-            f"* EXCLUDE ({self.data_partition_column})"
-            if self.drop_partition_column
-            else "*"
-        )
+        column_projection = f"* EXCLUDE ({self.data_partition_column})" if self.drop_partition_column else "*"
         partition_filters = [
             (
                 partition_idx,
@@ -3175,12 +2744,8 @@ class HashPartitionDuckDbTask(ExecSqlQueryMixin, HashPartitionTask):
         partition_batches = split_into_rows(partition_filters, self.num_workers)
 
         with contextlib.ExitStack() as stack:
-            db_conns = [
-                stack.enter_context(conn.cursor()) for _ in range(self.num_workers)
-            ]
-            self.perf_metrics["num output rows"] += sum(
-                self.io_workers.map(write_partition_data, db_conns, partition_batches)
-            )
+            db_conns = [stack.enter_context(conn.cursor()) for _ in range(self.num_workers)]
+            self.perf_metrics["num output rows"] += sum(self.io_workers.map(write_partition_data, db_conns, partition_batches))
         elapsed_time = self.add_elapsed_time("output dump time (secs)")
         logger.debug(f"write partition data #{batch_index+1}: {elapsed_time:.3f} secs")
 
@@ -3202,16 +2767,12 @@ class HashPartitionArrowTask(HashPartitionTask):
         table = input_dataset.to_arrow_table(max_workers=self.cpu_limit)
         self.perf_metrics["num input rows"] += table.num_rows
         elapsed_time = self.add_elapsed_time("input load time (secs)")
-        logger.debug(
-            f"load input dataset: {table.nbytes/MB:.3f}MB, {table.num_rows} rows, {elapsed_time:.3f} secs"
-        )
+        logger.debug(f"load input dataset: {table.nbytes/MB:.3f}MB, {table.num_rows} rows, {elapsed_time:.3f} secs")
 
         if self.shuffle_only:
             partition_keys = table.column(self.data_partition_column)
         elif self.random_shuffle:
-            partition_keys = arrow.array(
-                self.numpy_random_gen.integers(self.npartitions, size=table.num_rows)
-            )
+            partition_keys = arrow.array(self.numpy_random_gen.integers(self.npartitions, size=table.num_rows))
         else:
             hash_columns = polars.from_arrow(table.select(self.hash_columns))
             hash_values = hash_columns.hash_rows(*self.fixed_rand_seeds)
@@ -3223,9 +2784,7 @@ class HashPartitionArrowTask(HashPartitionTask):
         elapsed_time = self.add_elapsed_time("compute time (secs)")
         logger.debug(f"generate partition keys: {elapsed_time:.3f} secs")
 
-        table_slice_size = max(
-            DEFAULT_BATCH_SIZE, min(table.num_rows // 2, 100 * 1024 * 1024)
-        )
+        table_slice_size = max(DEFAULT_BATCH_SIZE, min(table.num_rows // 2, 100 * 1024 * 1024))
         num_iterations = math.ceil(table.num_rows / table_slice_size)
 
         def write_partition_data(
@@ -3237,20 +2796,14 @@ class HashPartitionArrowTask(HashPartitionTask):
                 self._write_to_partition(partition_idx, partition_data.to_arrow())
             return total_num_rows
 
-        for table_slice_idx, table_slice_offset in enumerate(
-            range(0, table.num_rows, table_slice_size)
-        ):
+        for table_slice_idx, table_slice_offset in enumerate(range(0, table.num_rows, table_slice_size)):
             table_slice = table.slice(table_slice_offset, table_slice_size)
-            logger.debug(
-                f"table slice #{table_slice_idx+1}/{num_iterations}: {table_slice.nbytes/MB:.3f}MB, {table_slice.num_rows} rows"
-            )
+            logger.debug(f"table slice #{table_slice_idx+1}/{num_iterations}: {table_slice.nbytes/MB:.3f}MB, {table_slice.num_rows} rows")
 
             df = polars.from_arrow(table_slice)
             del table_slice
             elapsed_time = self.add_elapsed_time("compute time (secs)")
-            logger.debug(
-                f"convert from arrow table #{table_slice_idx+1}/{num_iterations}: {elapsed_time:.3f} secs"
-            )
+            logger.debug(f"convert from arrow table #{table_slice_idx+1}/{num_iterations}: {elapsed_time:.3f} secs")
 
             partitioned_dfs = df.partition_by(
                 [self.data_partition_column],
@@ -3258,23 +2811,15 @@ class HashPartitionArrowTask(HashPartitionTask):
                 include_key=not self.drop_partition_column,
                 as_dict=True,
             )
-            partitioned_dfs = [
-                (partition_idx, df) for (partition_idx,), df in partitioned_dfs.items()
-            ]
+            partitioned_dfs = [(partition_idx, df) for (partition_idx,), df in partitioned_dfs.items()]
             del df
             elapsed_time = self.add_elapsed_time("compute time (secs)")
-            logger.debug(
-                f"build partition data #{table_slice_idx+1}/{num_iterations}: {elapsed_time:.3f} secs"
-            )
+            logger.debug(f"build partition data #{table_slice_idx+1}/{num_iterations}: {elapsed_time:.3f} secs")
 
             partition_batches = split_into_rows(partitioned_dfs, self.num_workers)
-            self.perf_metrics["num output rows"] += sum(
-                self.io_workers.map(write_partition_data, partition_batches)
-            )
+            self.perf_metrics["num output rows"] += sum(self.io_workers.map(write_partition_data, partition_batches))
             elapsed_time = self.add_elapsed_time("output dump time (secs)")
-            logger.debug(
-                f"write partition data #{table_slice_idx+1}/{num_iterations}: {elapsed_time:.3f} secs"
-            )
+            logger.debug(f"write partition data #{table_slice_idx+1}/{num_iterations}: {elapsed_time:.3f} secs")
 
 
 class ProjectionTask(Task):
@@ -3403,27 +2948,16 @@ class DataSinkTask(Task):
             )
             for p in paths
         ]
-        logger.info(
-            f"collected {len(src_paths)} files from {len(self.input_datasets)} input datasets"
-        )
+        logger.info(f"collected {len(src_paths)} files from {len(self.input_datasets)} input datasets")
 
         if len(set(p.name for p in src_paths)) == len(src_paths):
             dst_paths = [runtime_output_dir / p.name for p in src_paths]
         else:
             logger.warning(f"found duplicate filenames, appending index to filename...")
-            dst_paths = [
-                runtime_output_dir / f"{p.stem}.{idx}{p.suffix}"
-                for idx, p in enumerate(src_paths)
-            ]
+            dst_paths = [runtime_output_dir / f"{p.stem}.{idx}{p.suffix}" for idx, p in enumerate(src_paths)]
 
-        output_paths = (
-            src_paths
-            if sink_type == "manifest"
-            else [final_output_dir / p.name for p in dst_paths]
-        )
-        self.dataset = ParquetDataSet(
-            [str(p) for p in output_paths]
-        )  # FIXME: what if the dataset is not parquet?
+        output_paths = src_paths if sink_type == "manifest" else [final_output_dir / p.name for p in dst_paths]
+        self.dataset = ParquetDataSet([str(p) for p in output_paths])  # FIXME: what if the dataset is not parquet?
 
         def copy_file(src_path: Path, dst_path: Path):
             # XXX: DO NOT use shutil.{copy, copy2, copyfileobj}
@@ -3433,9 +2967,7 @@ class DataSinkTask(Task):
 
         def create_link_or_copy(src_path: Path, dst_path: Path):
             if dst_path.exists():
-                logger.warning(
-                    f"destination path already exists, replacing {dst_path} with {src_path}"
-                )
+                logger.warning(f"destination path already exists, replacing {dst_path} with {src_path}")
                 dst_path.unlink(missing_ok=True)
             same_mount_point = str(src_path).startswith(dst_mount_point)
             if sink_type == "copy":
@@ -3477,9 +3009,7 @@ class DataSinkTask(Task):
             # check the output parquet files
             # if any file is broken, an exception will be raised
             if len(dst_paths) > 0 and dst_paths[0].suffix == ".parquet":
-                logger.info(
-                    f"checked dataset files and found {self.dataset.num_rows} rows"
-                )
+                logger.info(f"checked dataset files and found {self.dataset.num_rows} rows")
 
         return True
 
@@ -3512,9 +3042,7 @@ class ExecutionPlan(object):
     A directed acyclic graph (DAG) of tasks.
     """
 
-    def __init__(
-        self, ctx: RuntimeContext, root_task: RootTask, logical_plan: "LogicalPlan"
-    ) -> None:
+    def __init__(self, ctx: RuntimeContext, root_task: RootTask, logical_plan: "LogicalPlan") -> None:
         from smallpond.logical.node import LogicalPlan
 
         self.ctx = ctx
@@ -3612,9 +3140,7 @@ def main():
     parser.add_argument("-t", "--task_id", default=None, help="Task id")
     parser.add_argument("-r", "--retry_count", default=0, help="Task retry count")
     parser.add_argument("-o", "--output_path", default=None, help="Task output path")
-    parser.add_argument(
-        "-l", "--log_level", default="DEBUG", help="Logging message level"
-    )
+    parser.add_argument("-l", "--log_level", default="DEBUG", help="Logging message level")
     args = parser.parse_args()
 
     logger.remove()

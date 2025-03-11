@@ -71,9 +71,7 @@ def shuffle_data(
         partition_by_rows=True,
     )
     # Node 5: Write file in partitioned parquet format using Streaming for memory efficiency
-    shuffled_urls = StreamCopy(
-        ctx, (repartitioned,), output_name="data_copy", cpu_limit=1
-    )
+    shuffled_urls = StreamCopy(ctx, (repartitioned,), output_name="data_copy", cpu_limit=1)
 
     # Logical Plan DAG with all the Nodes dependencies and creates lazy execution plan 
     plan = LogicalPlan(ctx, shuffled_urls)
@@ -86,9 +84,7 @@ def main():
     driver.add_argument("-nd", "--num_data_partitions", type=int, default=1024)
     driver.add_argument("-nh", "--num_hash_partitions", type=int, default=3840)
     driver.add_argument("-no", "--num_out_data_partitions", type=int, default=1920)
-    driver.add_argument(
-        "-e", "--engine_type", default="duckdb", choices=("duckdb", "arrow")
-    )
+    driver.add_argument("-e", "--engine_type", default="duckdb", choices=("duckdb", "arrow"))
     driver.add_argument("-x", "--skip_hash_partition", action="store_true")
     plan = shuffle_data(**driver.get_arguments())
     # Executes logical plan parallelly, handling task scheduling dependencies & resource management

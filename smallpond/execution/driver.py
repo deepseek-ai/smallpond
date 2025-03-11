@@ -28,43 +28,23 @@ class Driver(object):
         self.all_args = None
 
     def _create_driver_args_parser(self):
-        parser = argparse.ArgumentParser(
-            prog="driver.py", description="Smallpond Driver", add_help=False
-        )
-        parser.add_argument(
-            "mode", choices=["executor", "scheduler", "ray"], default="executor"
-        )
-        parser.add_argument(
-            "--exec_id", default=socket.gethostname(), help="Unique executor id"
-        )
+        parser = argparse.ArgumentParser(prog="driver.py", description="Smallpond Driver", add_help=False)
+        parser.add_argument("mode", choices=["executor", "scheduler", "ray"], default="executor")
+        parser.add_argument("--exec_id", default=socket.gethostname(), help="Unique executor id")
         parser.add_argument("--job_id", type=str, help="Unique job id")
-        parser.add_argument(
-            "--job_time", type=float, help="Job create time (seconds since epoch)"
-        )
-        parser.add_argument(
-            "--job_name", default="smallpond", help="Display name of the job"
-        )
+        parser.add_argument("--job_time", type=float, help="Job create time (seconds since epoch)")
+        parser.add_argument("--job_name", default="smallpond", help="Display name of the job")
         parser.add_argument(
             "--job_priority",
             type=int,
             help="Job priority",
         )
         parser.add_argument("--resource_group", type=str, help="Resource group")
-        parser.add_argument(
-            "--env_variables", nargs="*", default=[], help="Env variables for the job"
-        )
-        parser.add_argument(
-            "--sidecars", nargs="*", default=[], help="Sidecars for the job"
-        )
-        parser.add_argument(
-            "--tags", nargs="*", default=[], help="Tags for submitted platform task"
-        )
-        parser.add_argument(
-            "--task_image", default="default", help="Container image of platform task"
-        )
-        parser.add_argument(
-            "--python_venv", type=str, help="Python virtual env for the job"
-        )
+        parser.add_argument("--env_variables", nargs="*", default=[], help="Env variables for the job")
+        parser.add_argument("--sidecars", nargs="*", default=[], help="Sidecars for the job")
+        parser.add_argument("--tags", nargs="*", default=[], help="Tags for submitted platform task")
+        parser.add_argument("--task_image", default="default", help="Container image of platform task")
+        parser.add_argument("--python_venv", type=str, help="Python virtual env for the job")
         parser.add_argument(
             "--data_root",
             type=str,
@@ -257,9 +237,7 @@ class Driver(object):
             default="DEBUG",
             choices=log_level_choices,
         )
-        parser.add_argument(
-            "--disable_log_rotation", action="store_true", help="Disable log rotation"
-        )
+        parser.add_argument("--disable_log_rotation", action="store_true", help="Disable log rotation")
         parser.add_argument(
             "--output_path",
             help="Set the output directory of final results and all nodes that have output_name but no output_path specified",
@@ -279,9 +257,7 @@ class Driver(object):
 
     def parse_arguments(self, args=None):
         if self.user_args is None or self.driver_args is None:
-            args_parser = argparse.ArgumentParser(
-                parents=[self.driver_args_parser, self.user_args_parser]
-            )
+            args_parser = argparse.ArgumentParser(parents=[self.driver_args_parser, self.user_args_parser])
             self.all_args = args_parser.parse_args(args)
             self.user_args, other_args = self.user_args_parser.parse_known_args(args)
             self.driver_args = self.driver_args_parser.parse_args(other_args)
@@ -349,9 +325,7 @@ class Driver(object):
             DataFrame(sp, plan.root_node).compute()
             retval = True
         elif args.mode == "executor":
-            assert os.path.isfile(
-                args.runtime_ctx_path
-            ), f"cannot find runtime context: {args.runtime_ctx_path}"
+            assert os.path.isfile(args.runtime_ctx_path), f"cannot find runtime context: {args.runtime_ctx_path}"
             runtime_ctx: RuntimeContext = load(args.runtime_ctx_path)
 
             if runtime_ctx.bind_numa_node:
@@ -371,9 +345,7 @@ class Driver(object):
                 retval = run_executor(runtime_ctx, args.exec_id)
         elif args.mode == "scheduler":
             assert plan is not None
-            jobmgr = JobManager(
-                args.data_root, args.python_venv, args.task_image, args.platform
-            )
+            jobmgr = JobManager(args.data_root, args.python_venv, args.task_image, args.platform)
             exec_plan = jobmgr.run(
                 plan,
                 job_id=args.job_id,

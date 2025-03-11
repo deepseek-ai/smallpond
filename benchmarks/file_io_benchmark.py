@@ -64,9 +64,7 @@ def main():
     driver = Driver()
     driver.add_argument("-i", "--input_paths", nargs="+")
     driver.add_argument("-n", "--npartitions", type=int, default=None)
-    driver.add_argument(
-        "-e", "--io_engine", default="duckdb", choices=("duckdb", "arrow", "stream")
-    )
+    driver.add_argument("-e", "--io_engine", default="duckdb", choices=("duckdb", "arrow", "stream"))
     driver.add_argument("-b", "--batch_size", type=int, default=1024 * 1024)
     driver.add_argument("-s", "--row_group_size", type=int, default=1024 * 1024)
     driver.add_argument("-o", "--output_name", default="data")

@@ -27,9 +27,7 @@ from tests.datagen import generate_data
 generate_data()
 
 
-def run_scheduler(
-    runtime_ctx: RuntimeContext, scheduler: Scheduler, queue: queue.Queue
-):
+def run_scheduler(runtime_ctx: RuntimeContext, scheduler: Scheduler, queue: queue.Queue):
     runtime_ctx.initialize("scheduler")
     scheduler.add_state_observer(Scheduler.StateObserver(SaveSchedState(queue)))
     retval = scheduler.run()
@@ -130,9 +128,7 @@ class TestFabric(unittest.TestCase):
                 process.kill()
                 process.join()
 
-            logger.info(
-                f"#{i} process {process.name} exited with code {process.exitcode}"
-            )
+            logger.info(f"#{i} process {process.name} exited with code {process.exitcode}")
 
     def start_execution(
         self,
@@ -189,11 +185,7 @@ class TestFabric(unittest.TestCase):
                 secs_wq_poll_interval=secs_wq_poll_interval,
                 secs_executor_probe_interval=secs_executor_probe_interval,
                 max_num_missed_probes=max_num_missed_probes,
-                fault_inject_prob=(
-                    fault_inject_prob
-                    if fault_inject_prob is not None
-                    else self.fault_inject_prob
-                ),
+                fault_inject_prob=(fault_inject_prob if fault_inject_prob is not None else self.fault_inject_prob),
                 enable_profiling=enable_profiling,
                 enable_diagnostic_metrics=enable_diagnostic_metrics,
                 remove_empty_parquet=remove_empty_parquet,
@@ -217,9 +209,7 @@ class TestFabric(unittest.TestCase):
             nonzero_exitcode_as_oom=nonzero_exitcode_as_oom,
         )
         self.latest_state = scheduler
-        self.executors = [
-            Executor.create(runtime_ctx, f"executor-{i}") for i in range(num_executors)
-        ]
+        self.executors = [Executor.create(runtime_ctx, f"executor-{i}") for i in range(num_executors)]
         self.processes = [
             Process(
                 target=run_scheduler,
@@ -229,10 +219,7 @@ class TestFabric(unittest.TestCase):
                 name="scheduler",
             )
         ]
-        self.processes += [
-            Process(target=run_executor, args=(runtime_ctx, executor), name=executor.id)
-            for executor in self.executors
-        ]
+        self.processes += [Process(target=run_executor, args=(runtime_ctx, executor), name=executor.id) for executor in self.executors]
 
         for process in reversed(self.processes):
             process.start()
@@ -264,15 +251,9 @@ class TestFabric(unittest.TestCase):
             self.assertTrue(latest_state.success)
         return latest_state.exec_plan
 
-    def _load_parquet_files(
-        self, paths, filesystem: fsspec.AbstractFileSystem = None
-    ) -> arrow.Table:
+    def _load_parquet_files(self, paths, filesystem: fsspec.AbstractFileSystem = None) -> arrow.Table:
         def read_parquet_file(path):
-            return arrow.Table.from_batches(
-                parquet.ParquetFile(
-                    path, buffer_size=16 * MB, filesystem=filesystem
-                ).iter_batches()
-            )
+            return arrow.Table.from_batches(parquet.ParquetFile(path, buffer_size=16 * MB, filesystem=filesystem).iter_batches())
 
         with ThreadPoolExecutor(16) as pool:
             return arrow.concat_tables(pool.map(read_parquet_file, paths))

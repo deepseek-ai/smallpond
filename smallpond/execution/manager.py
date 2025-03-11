@@ -26,13 +26,9 @@ class SchedStateExporter(Scheduler.StateObserver):
         if sched_state.large_runtime_state:
             logger.debug(f"pause exporting scheduler state")
         elif sched_state.num_local_running_works > 0:
-            logger.debug(
-                f"pause exporting scheduler state: {sched_state.num_local_running_works} local running works"
-            )
+            logger.debug(f"pause exporting scheduler state: {sched_state.num_local_running_works} local running works")
         else:
-            dump(
-                sched_state, self.sched_state_path, buffering=32 * MB, atomic_write=True
-            )
+            dump(sched_state, self.sched_state_path, buffering=32 * MB, atomic_write=True)
             sched_state.log_overall_progress()
             logger.debug(f"exported scheduler state to {self.sched_state_path}")
 
@@ -97,12 +93,8 @@ class JobManager(object):
         bind_numa_node=False,
         enforce_memory_limit=False,
         share_log_analytics: Optional[bool] = None,
-        console_log_level: Literal[
-            "CRITICAL", "ERROR", "WARNING", "SUCCESS", "INFO", "DEBUG", "TRACE"
-        ] = "INFO",
-        file_log_level: Literal[
-            "CRITICAL", "ERROR", "WARNING", "SUCCESS", "INFO", "DEBUG", "TRACE"
-        ] = "DEBUG",
+        console_log_level: Literal["CRITICAL", "ERROR", "WARNING", "SUCCESS", "INFO", "DEBUG", "TRACE"] = "INFO",
+        file_log_level: Literal["CRITICAL", "ERROR", "WARNING", "SUCCESS", "INFO", "DEBUG", "TRACE"] = "DEBUG",
         disable_log_rotation=False,
         sched_state_observers: Optional[List[Scheduler.StateObserver]] = None,
         output_path: Optional[str] = None,
@@ -111,11 +103,7 @@ class JobManager(object):
         logger.info(f"using platform: {self.platform}")
 
         job_id = JobId(hex=job_id or self.platform.default_job_id())
-        job_time = (
-            datetime.fromtimestamp(job_time)
-            if job_time is not None
-            else self.platform.default_job_time()
-        )
+        job_time = datetime.fromtimestamp(job_time) if job_time is not None else self.platform.default_job_time()
 
         malloc_path = ""
         if memory_allocator == "system":
@@ -131,19 +119,10 @@ class JobManager(object):
             arrow_default_malloc=memory_allocator,
         ).splitlines()
         env_overrides = env_overrides + (env_variables or [])
-        env_overrides = dict(
-            tuple(kv.strip().split("=", maxsplit=1))
-            for kv in filter(None, env_overrides)
-        )
+        env_overrides = dict(tuple(kv.strip().split("=", maxsplit=1)) for kv in filter(None, env_overrides))
 
-        share_log_analytics = (
-            share_log_analytics
-            if share_log_analytics is not None
-            else self.platform.default_share_log_analytics()
-        )
-        shared_log_root = (
-            self.platform.shared_log_root() if share_log_analytics else None
-        )
+        share_log_analytics = share_log_analytics if share_log_analytics is not None else self.platform.default_share_log_analytics()
+        shared_log_root = self.platform.shared_log_root() if share_log_analytics else None
 
         runtime_ctx = RuntimeContext(
             job_id,
@@ -167,9 +146,7 @@ class JobManager(object):
             **kwargs,
         )
         runtime_ctx.initialize(socket.gethostname(), root_exist_ok=True)
-        logger.info(
-            f"command-line arguments: {' '.join([os.path.basename(sys.argv[0]), *sys.argv[1:]])}"
-        )
+        logger.info(f"command-line arguments: {' '.join([os.path.basename(sys.argv[0]), *sys.argv[1:]])}")
 
         dump(runtime_ctx, runtime_ctx.runtime_ctx_path, atomic_write=True)
         logger.info(f"saved runtime context at {runtime_ctx.runtime_ctx_path}")
@@ -178,13 +155,9 @@ class JobManager(object):
         logger.info(f"saved logcial plan at {runtime_ctx.logcial_plan_path}")
 
         plan.graph().render(runtime_ctx.logcial_plan_graph_path, format="png")
-        logger.info(
-            f"saved logcial plan graph at {runtime_ctx.logcial_plan_graph_path}.png"
-        )
+        logger.info(f"saved logcial plan graph at {runtime_ctx.logcial_plan_graph_path}.png")
 
-        exec_plan = Planner(runtime_ctx).create_exec_plan(
-            plan, manifest_only_final_results
-        )
+        exec_plan = Planner(runtime_ctx).create_exec_plan(plan, manifest_only_final_results)
         dump(exec_plan, runtime_ctx.exec_plan_path, atomic_write=True)
         logger.info(f"saved execution plan at {runtime_ctx.exec_plan_path}")
 
@@ -229,9 +202,7 @@ class JobManager(object):
             sched_state_observers.insert(0, sched_state_exporter)
 
         if os.path.exists(runtime_ctx.sched_state_path):
-            logger.warning(
-                f"loading scheduler state from: {runtime_ctx.sched_state_path}"
-            )
+            logger.warning(f"loading scheduler state from: {runtime_ctx.sched_state_path}")
             scheduler: Scheduler = load(runtime_ctx.sched_state_path)
             scheduler.sched_epoch += 1
             scheduler.sched_state_observers = sched_state_observers

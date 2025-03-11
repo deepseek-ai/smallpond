@@ -31,9 +31,7 @@ from tests.test_fabric import TestFabric
 
 class CalculatePartitionFromFilename(UserDefinedPartitionNode):
     def partition(self, runtime_ctx: RuntimeContext, dataset: DataSet) -> List[DataSet]:
-        partitioned_datasets: List[ParquetDataSet] = [
-            ParquetDataSet([]) for _ in range(self.npartitions)
-        ]
+        partitioned_datasets: List[ParquetDataSet] = [ParquetDataSet([]) for _ in range(self.npartitions)]
         for path in dataset.resolved_paths:
             partition_idx = hash(path) % self.npartitions
             partitioned_datasets[partition_idx].paths.append(path)
@@ -45,9 +43,7 @@ class TestPartition(TestFabric, unittest.TestCase):
         ctx = Context()
         dataset = ParquetDataSet(["tests/data/mock_urls/*.parquet"] * 10)
         data_files = DataSourceNode(ctx, dataset)
-        data_partitions = DataSetPartitionNode(
-            ctx, (data_files,), npartitions=dataset.num_files
-        )
+        data_partitions = DataSetPartitionNode(ctx, (data_files,), npartitions=dataset.num_files)
         count_rows = SqlEngineNode(
             ctx,
             (data_partitions,),
@@ -62,9 +58,7 @@ class TestPartition(TestFabric, unittest.TestCase):
         ctx = Context()
         dataset = ParquetDataSet(["tests/data/mock_urls/*.parquet"])
         data_files = DataSourceNode(ctx, dataset)
-        data_partitions = DataSetPartitionNode(
-            ctx, (data_files,), npartitions=dataset.num_rows, partition_by_rows=True
-        )
+        data_partitions = DataSetPartitionNode(ctx, (data_files,), npartitions=dataset.num_rows, partition_by_rows=True)
         count_rows = SqlEngineNode(
             ctx,
             (data_partitions,),
@@ -74,18 +68,14 @@ class TestPartition(TestFabric, unittest.TestCase):
         )
         plan = LogicalPlan(ctx, count_rows)
         exec_plan = self.execute_plan(plan, num_executors=5)
-        self.assertEqual(
-            exec_plan.final_output.to_arrow_table().num_rows, dataset.num_rows
-        )
+        self.assertEqual(exec_plan.final_output.to_arrow_table().num_rows, dataset.num_rows)
 
     def test_empty_dataset_partition(self):
         ctx = Context()
         dataset = ParquetDataSet(["tests/data/mock_urls/*.parquet"])
         data_files = DataSourceNode(ctx, dataset)
         # create more partitions than files
-        data_partitions = EvenlyDistributedPartitionNode(
-            ctx, (data_files,), npartitions=dataset.num_files * 2
-        )
+        data_partitions = EvenlyDistributedPartitionNode(ctx, (data_files,), npartitions=dataset.num_files * 2)
         data_partitions.max_num_producer_tasks = 3
         unique_urls = SqlEngineNode(
             ctx,
@@ -95,9 +85,7 @@ class TestPartition(TestFabric, unittest.TestCase):
             memory_limit=1 * GB,
         )
         # nested partition
-        nested_partitioned_urls = EvenlyDistributedPartitionNode(
-            ctx, (unique_urls,), npartitions=3, dimension="nested", nested=True
-        )
+        nested_partitioned_urls = EvenlyDistributedPartitionNode(ctx, (unique_urls,), npartitions=3, dimension="nested", nested=True)
         parsed_urls = ArrowComputeNode(
             ctx,
             (nested_partitioned_urls,),
@@ -106,18 +94,14 @@ class TestPartition(TestFabric, unittest.TestCase):
             memory_limit=1 * GB,
         )
         plan = LogicalPlan(ctx, parsed_urls)
-        final_output = self.execute_plan(
-            plan, remove_empty_parquet=True, skip_task_with_empty_input=True
-        ).final_output
+        final_output = self.execute_plan(plan, remove_empty_parquet=True, skip_task_with_empty_input=True).final_output
         self.assertTrue(isinstance(final_output, ParquetDataSet))
         self.assertEqual(dataset.num_rows, final_output.num_rows)
 
     def test_hash_partition(self):
         for engine_type in ("duckdb", "arrow"):
             for partition_by_rows in (False, True):
-                for hive_partitioning in (
-                    (False, True) if engine_type == "duckdb" else (False,)
-                ):
+                for hive_partitioning in (False, True) if engine_type == "duckdb" else (False,):
                     with self.subTest(
                         engine_type=engine_type,
                         partition_by_rows=partition_by_rows,
@@ -155,26 +139,16 @@ class TestPartition(TestFabric, unittest.TestCase):
                         exec_plan = self.execute_plan(plan)
                         self.assertEqual(
                             dataset.num_rows,
-                            pc.sum(
-                                exec_plan.final_output.to_arrow_table().column(
-                                    "row_count"
-                                )
-                            ).as_py(),
+                            pc.sum(exec_plan.final_output.to_arrow_table().column("row_count")).as_py(),
+                        )
+                        self.assertEqual(
+                            npartitions,
+                            len(exec_plan.final_output.load_partitioned_datasets(npartitions, DATA_PARTITION_COLUMN_NAME)),
                         )
                         self.assertEqual(
                             npartitions,
                             len(
-                                exec_plan.final_output.load_partitioned_datasets(
-                                    npartitions, DATA_PARTITION_COLUMN_NAME
-                                )
-                            ),
-                        )
-                        self.assertEqual(
-                            npartitions,
-                            len(
-                                exec_plan.get_output(
-                                    "hash_partitions"
-                                ).load_partitioned_datasets(
+                                exec_plan.get_output("hash_partitions").load_partitioned_datasets(
                                     npartitions,
                                     DATA_PARTITION_COLUMN_NAME,
                                     hive_partitioning,
@@ -185,9 +159,7 @@ class TestPartition(TestFabric, unittest.TestCase):
     def test_empty_hash_partition(self):
         for engine_type in ("duckdb", "arrow"):
             for partition_by_rows in (False, True):
-                for hive_partitioning in (
-                    (False, True) if engine_type == "duckdb" else (False,)
-                ):
+                for hive_partitioning in (False, True) if engine_type == "duckdb" else (False,):
                     with self.subTest(
                         engine_type=engine_type,
                         partition_by_rows=partition_by_rows,
@@ -199,9 +171,7 @@ class TestPartition(TestFabric, unittest.TestCase):
                         npartitions = 3
                         npartitions_nested = 4
                         num_rows = 1
-                        head_rows = SqlEngineNode(
-                            ctx, (data_files,), f"select * from {{0}} limit {num_rows}"
-                        )
+                        head_rows = SqlEngineNode(ctx, (data_files,), f"select * from {{0}} limit {num_rows}")
                         data_partitions = DataSetPartitionNode(
                             ctx,
                             (head_rows,),
@@ -241,53 +211,31 @@ class TestPartition(TestFabric, unittest.TestCase):
                             memory_limit=1 * GB,
                         )
                         plan = LogicalPlan(ctx, select_every_row)
-                        exec_plan = self.execute_plan(
-                            plan, skip_task_with_empty_input=True
-                        )
+                        exec_plan = self.execute_plan(plan, skip_task_with_empty_input=True)
                         self.assertEqual(num_rows, exec_plan.final_output.num_rows)
                         self.assertEqual(
                             npartitions,
-                            len(
-                                exec_plan.final_output.load_partitioned_datasets(
-                                    npartitions, "hash_partitions"
-                                )
-                            ),
+                            len(exec_plan.final_output.load_partitioned_datasets(npartitions, "hash_partitions")),
                         )
                         self.assertEqual(
                             npartitions_nested,
-                            len(
-                                exec_plan.final_output.load_partitioned_datasets(
-                                    npartitions_nested, "nested_hash_partitions"
-                                )
-                            ),
+                            len(exec_plan.final_output.load_partitioned_datasets(npartitions_nested, "nested_hash_partitions")),
                         )
                         self.assertEqual(
                             npartitions,
-                            len(
-                                exec_plan.get_output(
-                                    "hash_partitions"
-                                ).load_partitioned_datasets(
-                                    npartitions, "hash_partitions"
-                                )
-                            ),
+                            len(exec_plan.get_output("hash_partitions").load_partitioned_datasets(npartitions, "hash_partitions")),
                         )
                         self.assertEqual(
                             npartitions_nested,
                             len(
-                                exec_plan.get_output(
-                                    "nested_hash_partitions"
-                                ).load_partitioned_datasets(
-                                    npartitions_nested, "nested_hash_partitions"
-                                )
+                                exec_plan.get_output("nested_hash_partitions").load_partitioned_datasets(npartitions_nested, "nested_hash_partitions")
                             ),
                         )
                         if hive_partitioning:
                             self.assertEqual(
                                 npartitions,
                                 len(
-                                    exec_plan.get_output(
-                                        "hash_partitions"
-                                    ).load_partitioned_datasets(
+                                    exec_plan.get_output("hash_partitions").load_partitioned_datasets(
                                         npartitions,
                                         "hash_partitions",
                                         hive_partitioning=True,
@@ -297,9 +245,7 @@ class TestPartition(TestFabric, unittest.TestCase):
                             self.assertEqual(
                                 npartitions_nested,
                                 len(
-                                    exec_plan.get_output(
-                                        "nested_hash_partitions"
-                                    ).load_partitioned_datasets(
+                                    exec_plan.get_output("nested_hash_partitions").load_partitioned_datasets(
                                         npartitions_nested,
                                         "nested_hash_partitions",
                                         hive_partitioning=True,
@@ -341,19 +287,11 @@ class TestPartition(TestFabric, unittest.TestCase):
             exec_plan = self.execute_plan(plan)
             self.assertEqual(
                 npartitions,
-                len(
-                    exec_plan.final_output.load_partitioned_datasets(
-                        npartitions, data_partition_column
-                    )
-                ),
+                len(exec_plan.final_output.load_partitioned_datasets(npartitions, data_partition_column)),
             )
             self.assertEqual(
                 npartitions,
-                len(
-                    exec_plan.get_output("input_partitions").load_partitioned_datasets(
-                        npartitions, data_partition_column, hive_partitioning
-                    )
-                ),
+                len(exec_plan.get_output("input_partitions").load_partitioned_datasets(npartitions, data_partition_column, hive_partitioning)),
             )
             return exec_plan
 
@@ -376,12 +314,8 @@ class TestPartition(TestFabric, unittest.TestCase):
                 )
 
                 ctx = Context()
-                output1 = DataSourceNode(
-                    ctx, dataset=exec_plan1.get_output("input_partitions")
-                )
-                output2 = DataSourceNode(
-                    ctx, dataset=exec_plan2.get_output("input_partitions")
-                )
+                output1 = DataSourceNode(ctx, dataset=exec_plan1.get_output("input_partitions"))
+                output2 = DataSourceNode(ctx, dataset=exec_plan2.get_output("input_partitions"))
                 split_urls1 = LoadPartitionedDataSetNode(
                     ctx,
                     (output1,),
@@ -411,16 +345,8 @@ class TestPartition(TestFabric, unittest.TestCase):
                 plan = LogicalPlan(ctx, split_urls3)
                 exec_plan3 = self.execute_plan(plan)
                 # load each partition as arrow table and compare
-                final_output_partitions1 = (
-                    exec_plan1.final_output.load_partitioned_datasets(
-                        npartitions, data_partition_column
-                    )
-                )
-                final_output_partitions3 = (
-                    exec_plan3.final_output.load_partitioned_datasets(
-                        npartitions, data_partition_column
-                    )
-                )
+                final_output_partitions1 = exec_plan1.final_output.load_partitioned_datasets(npartitions, data_partition_column)
+                final_output_partitions3 = exec_plan3.final_output.load_partitioned_datasets(npartitions, data_partition_column)
                 self.assertEqual(npartitions, len(final_output_partitions3))
                 for x, y in zip(final_output_partitions1, final_output_partitions3):
                     self._compare_arrow_tables(x.to_arrow_table(), y.to_arrow_table())
@@ -433,9 +359,7 @@ class TestPartition(TestFabric, unittest.TestCase):
         SqlEngineNode.default_cpu_limit = 1
         SqlEngineNode.default_memory_limit = 1 * GB
         initial_reduce = r"select host, count(*) as cnt from {0} group by host"
-        combine_reduce_results = (
-            r"select host, cast(sum(cnt) as bigint) as cnt from {0} group by host"
-        )
+        combine_reduce_results = r"select host, cast(sum(cnt) as bigint) as cnt from {0} group by host"
         join_query = r"select host, cnt from {0} where (exists (select * from {1} where {1}.host = {0}.host)) and (exists (select * from {2} where {2}.host = {0}.host))"
 
         partition_by_hosts = HashPartitionNode(
@@ -496,11 +420,7 @@ class TestPartition(TestFabric, unittest.TestCase):
         url_count_by_3dims = SqlEngineNode(ctx, (partitioned_3dims,), initial_reduce)
         url_count_by_hosts_x_urls2 = SqlEngineNode(
             ctx,
-            (
-                ConsolidateNode(
-                    ctx, url_count_by_3dims, ["host_partition", "url_partition"]
-                ),
-            ),
+            (ConsolidateNode(ctx, url_count_by_3dims, ["host_partition", "url_partition"]),),
             combine_reduce_results,
             output_name="url_count_by_hosts_x_urls2",
         )
@@ -524,9 +444,7 @@ class TestPartition(TestFabric, unittest.TestCase):
             output_name="join_count_by_hosts_x_urls2",
         )
 
-        union_url_count_by_hosts = UnionNode(
-            ctx, (url_count_by_hosts1, url_count_by_hosts2)
-        )
+        union_url_count_by_hosts = UnionNode(ctx, (url_count_by_hosts1, url_count_by_hosts2))
         union_url_count_by_hosts_x_urls = UnionNode(
             ctx,
             (
@@ -576,18 +494,14 @@ class TestPartition(TestFabric, unittest.TestCase):
         ctx = Context()
         parquet_files = ParquetDataSet(["tests/data/mock_urls/*.parquet"])
         data_source = DataSourceNode(ctx, parquet_files)
-        file_partitions1 = CalculatePartitionFromFilename(
-            ctx, (data_source,), npartitions=3, dimension="by_filename_hash1"
-        )
+        file_partitions1 = CalculatePartitionFromFilename(ctx, (data_source,), npartitions=3, dimension="by_filename_hash1")
         url_count1 = SqlEngineNode(
             ctx,
             (file_partitions1,),
             r"select host, count(*) as cnt from {0} group by host",
             output_name="url_count1",
         )
-        file_partitions2 = CalculatePartitionFromFilename(
-            ctx, (url_count1,), npartitions=3, dimension="by_filename_hash2"
-        )
+        file_partitions2 = CalculatePartitionFromFilename(ctx, (url_count1,), npartitions=3, dimension="by_filename_hash2")
         url_count2 = SqlEngineNode(
             ctx,
             (file_partitions2,),
@@ -606,9 +520,7 @@ class TestPartition(TestFabric, unittest.TestCase):
         ctx = Context()
         parquet_dataset = ParquetDataSet(["tests/data/mock_urls/*.parquet"])
         data_source = DataSourceNode(ctx, parquet_dataset)
-        evenly_dist_data_source = EvenlyDistributedPartitionNode(
-            ctx, (data_source,), npartitions=parquet_dataset.num_files
-        )
+        evenly_dist_data_source = EvenlyDistributedPartitionNode(ctx, (data_source,), npartitions=parquet_dataset.num_files)
 
         parquet_datasets = [ParquetDataSet([p]) for p in parquet_dataset.resolved_paths]
         partitioned_data_source = UserPartitionedDataSourceNode(ctx, parquet_datasets)
@@ -631,9 +543,7 @@ class TestPartition(TestFabric, unittest.TestCase):
             memory_limit=1 * GB,
         )
 
-        plan = LogicalPlan(
-            ctx, UnionNode(ctx, [url_count_by_host1, url_count_by_host2])
-        )
+        plan = LogicalPlan(ctx, UnionNode(ctx, [url_count_by_host1, url_count_by_host2]))
         exec_plan = self.execute_plan(plan, enable_diagnostic_metrics=True)
         self._compare_arrow_tables(
             exec_plan.get_output("url_count_by_host1").to_arrow_table(),
@@ -647,9 +557,7 @@ class TestPartition(TestFabric, unittest.TestCase):
         ctx = Context()
         parquet_dataset = ParquetDataSet(["tests/data/mock_urls/*.parquet"])
         data_source = DataSourceNode(ctx, parquet_dataset)
-        evenly_dist_data_source = EvenlyDistributedPartitionNode(
-            ctx, (data_source,), npartitions=parquet_dataset.num_files
-        )
+        evenly_dist_data_source = EvenlyDistributedPartitionNode(ctx, (data_source,), npartitions=parquet_dataset.num_files)
         sql_query = SqlEngineNode(
             ctx,
             (evenly_dist_data_source,),

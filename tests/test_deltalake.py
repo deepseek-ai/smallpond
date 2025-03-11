@@ -7,9 +7,7 @@ from smallpond.io.arrow import cast_columns_to_large_string
 from tests.test_fabric import TestFabric
 
 
-@unittest.skipUnless(
-    importlib.util.find_spec("deltalake") is not None, "cannot find deltalake"
-)
+@unittest.skipUnless(importlib.util.find_spec("deltalake") is not None, "cannot find deltalake")
 class TestDeltaLake(TestFabric, unittest.TestCase):
     def test_read_write_deltalake(self):
         from deltalake import DeltaTable, write_deltalake
@@ -20,9 +18,7 @@ class TestDeltaLake(TestFabric, unittest.TestCase):
         ):
             parquet_files = glob.glob(dataset_path)
             expected = self._load_parquet_files(parquet_files)
-            with self.subTest(dataset_path=dataset_path), tempfile.TemporaryDirectory(
-                dir=self.output_root_abspath
-            ) as output_dir:
+            with self.subTest(dataset_path=dataset_path), tempfile.TemporaryDirectory(dir=self.output_root_abspath) as output_dir:
                 write_deltalake(output_dir, expected, large_dtypes=True)
                 dt = DeltaTable(output_dir)
                 self._compare_arrow_tables(expected, dt.to_pyarrow_table())
@@ -35,12 +31,8 @@ class TestDeltaLake(TestFabric, unittest.TestCase):
             "tests/data/large_array/*.parquet",
         ):
             parquet_files = glob.glob(dataset_path)
-            with self.subTest(dataset_path=dataset_path), tempfile.TemporaryDirectory(
-                dir=self.output_root_abspath
-            ) as output_dir:
-                table = cast_columns_to_large_string(
-                    self._load_parquet_files(parquet_files)
-                )
+            with self.subTest(dataset_path=dataset_path), tempfile.TemporaryDirectory(dir=self.output_root_abspath) as output_dir:
+                table = cast_columns_to_large_string(self._load_parquet_files(parquet_files))
                 write_deltalake(output_dir, table, large_dtypes=True, mode="overwrite")
                 write_deltalake(output_dir, table, large_dtypes=False, mode="append")
                 loaded_table = DeltaTable(output_dir).to_pyarrow_table()

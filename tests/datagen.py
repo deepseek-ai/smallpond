@@ -14,19 +14,13 @@ from filelock import FileLock
 
 
 def generate_url_and_domain() -> Tuple[str, str]:
-    domain_part = "".join(
-        random.choices(string.ascii_lowercase, k=random.randint(5, 15))
-    )
+    domain_part = "".join(random.choices(string.ascii_lowercase, k=random.randint(5, 15)))
     tld = random.choice(["com", "net", "org", "cn", "edu", "gov", "co", "io"])
     domain = f"www.{domain_part}.{tld}"
 
     path_segments = []
     for _ in range(random.randint(1, 3)):
-        segment = "".join(
-            random.choices(
-                string.ascii_lowercase + string.digits, k=random.randint(3, 10)
-            )
-        )
+        segment = "".join(random.choices(string.ascii_lowercase + string.digits, k=random.randint(3, 10)))
         path_segments.append(segment)
     path = "/" + "/".join(path_segments)
 
@@ -42,26 +36,18 @@ def generate_random_date() -> str:
     start = datetime(2023, 1, 1, tzinfo=timezone.utc)
     end = datetime(2023, 12, 31, tzinfo=timezone.utc)
     delta = end - start
-    random_date = start + timedelta(
-        seconds=random.randint(0, int(delta.total_seconds()))
-    )
+    random_date = start + timedelta(seconds=random.randint(0, int(delta.total_seconds())))
     return random_date.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def generate_content() -> bytes:
-    target_length = (
-        random.randint(1000, 100000)
-        if random.random() < 0.8
-        else random.randint(100000, 1000000)
-    )
+    target_length = random.randint(1000, 100000) if random.random() < 0.8 else random.randint(100000, 1000000)
     before = b"<!DOCTYPE html><html><head><title>Random Page</title></head><body>"
     after = b"</body></html>"
     total_before_after = len(before) + len(after)
 
     fill_length = max(target_length - total_before_after, 0)
-    filler = "".join(random.choices(string.printable, k=fill_length)).encode("ascii")[
-        :fill_length
-    ]
+    filler = "".join(random.choices(string.printable, k=fill_length)).encode("ascii")[:fill_length]
 
     return before + filler + after
 
@@ -103,9 +89,7 @@ def generate_random_string(length: int) -> str:
 def generate_random_url() -> str:
     """Generate a random URL"""
     path = generate_random_string(random.randint(10, 20))
-    return (
-        f"com.{random.randint(10000, 999999)}.{random.randint(100, 9999)}/{path}.html"
-    )
+    return f"com.{random.randint(10000, 999999)}.{random.randint(100, 9999)}/{path}.html"
 
 
 def generate_random_data() -> str:
@@ -138,9 +122,7 @@ def generate_url_parquet_files(output_dir: str, num_files: int = 10):
         )
 
 
-def generate_url_tsv_files(
-    output_dir: str, num_files: int = 10, lines_per_file: int = 100
-):
+def generate_url_tsv_files(output_dir: str, num_files: int = 10, lines_per_file: int = 100):
     """Generate multiple files, each containing a specified number of random data lines"""
     os.makedirs(output_dir, exist_ok=True)
     for i in range(num_files):
@@ -166,16 +148,12 @@ def generate_data(path: str = "tests/data"):
         with FileLock(path + "/data.lock"):
             print("Generating data...")
             if not os.path.exists(path + "/mock_urls"):
-                generate_url_tsv_files(
-                    output_dir=path + "/mock_urls", num_files=10, lines_per_file=100
-                )
+                generate_url_tsv_files(output_dir=path + "/mock_urls", num_files=10, lines_per_file=100)
                 generate_url_parquet_files(output_dir=path + "/mock_urls", num_files=10)
             if not os.path.exists(path + "/arrow"):
                 generate_arrow_files(output_dir=path + "/arrow", num_files=10)
             if not os.path.exists(path + "/large_array"):
-                concat_arrow_files(
-                    input_dir=path + "/arrow", output_dir=path + "/large_array"
-                )
+                concat_arrow_files(input_dir=path + "/arrow", output_dir=path + "/large_array")
             if not os.path.exists(path + "/long_path_list.txt"):
                 generate_long_path_list(path=path + "/long_path_list.txt")
     except Exception as e:

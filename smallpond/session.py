@@ -57,9 +57,7 @@ class SessionBase:
         logger.info(f"session config: {self.config}")
 
         def setup_worker():
-            runtime_ctx._init_logs(
-                exec_id=socket.gethostname(), capture_stdout_stderr=True
-            )
+            runtime_ctx._init_logs(exec_id=socket.gethostname(), capture_stdout_stderr=True)
 
         if self.config.ray_address is None:
             # find the memory allocator
@@ -72,9 +70,7 @@ class SessionBase:
                 malloc_path = shutil.which("libmimalloc.so.2.1")
                 assert malloc_path is not None, "mimalloc is not installed"
             else:
-                raise ValueError(
-                    f"unsupported memory allocator: {self.config.memory_allocator}"
-                )
+                raise ValueError(f"unsupported memory allocator: {self.config.memory_allocator}")
             memory_purge_delay = 10000
 
             # start ray head node
@@ -84,11 +80,7 @@ class SessionBase:
                 # start a new local cluster
                 address="local",
                 # disable local CPU resource if not running on localhost
-                num_cpus=(
-                    0
-                    if self.config.num_executors > 0
-                    else self._runtime_ctx.usable_cpu_count
-                ),
+                num_cpus=(0 if self.config.num_executors > 0 else self._runtime_ctx.usable_cpu_count),
                 # set the memory limit to the available memory size
                 _memory=self._runtime_ctx.usable_memory_size,
                 # setup logging for workers
@@ -142,9 +134,7 @@ class SessionBase:
 
         # spawn a thread to periodically dump metrics
         self._stop_event = threading.Event()
-        self._dump_thread = threading.Thread(
-            name="dump_thread", target=self._dump_periodically, daemon=True
-        )
+        self._dump_thread = threading.Thread(name="dump_thread", target=self._dump_periodically, daemon=True)
         self._dump_thread.start()
 
     def shutdown(self):
@@ -184,11 +174,7 @@ class SessionBase:
             extra_opts=dict(
                 tags=["smallpond", "scheduler", smallpond.__version__],
             ),
-            envs={
-                k: v
-                for k, v in os.environ.items()
-                if k.startswith("SP_") and k != "SP_SPAWN"
-            },
+            envs={k: v for k, v in os.environ.items() if k.startswith("SP_") and k != "SP_SPAWN"},
         )
 
     def _start_prometheus(self) -> Optional[subprocess.Popen]:
@@ -233,8 +219,7 @@ class SessionBase:
             stdout=open(f"{self._runtime_ctx.log_root}/grafana/grafana.log", "w"),
             env={
                 "GF_SERVER_HTTP_PORT": "8122",  # redirect to an available port
-                "GF_SERVER_ROOT_URL": os.environ.get("RAY_GRAFANA_IFRAME_HOST")
-                or "http://localhost:8122",
+                "GF_SERVER_ROOT_URL": os.environ.get("RAY_GRAFANA_IFRAME_HOST") or "http://localhost:8122",
                 "GF_PATHS_DATA": f"{self._runtime_ctx.log_root}/grafana/data",
             },
         )
@@ -309,12 +294,8 @@ class SessionBase:
             self.dump_graph()
             self.dump_timeline()
             num_total_tasks, num_finished_tasks = self._summarize_task()
-            percent = (
-                num_finished_tasks / num_total_tasks * 100 if num_total_tasks > 0 else 0
-            )
-            logger.info(
-                f"progress: {num_finished_tasks}/{num_total_tasks} tasks ({percent:.1f}%)"
-            )
+            percent = num_finished_tasks / num_total_tasks * 100 if num_total_tasks > 0 else 0
+            logger.info(f"progress: {num_finished_tasks}/{num_total_tasks} tasks ({percent:.1f}%)")
 
 
 @dataclass
@@ -360,20 +341,12 @@ class Config:
 
         platform = get_platform(get_env("PLATFORM") or platform)
         job_id = get_env("JOBID") or job_id or platform.default_job_id()
-        job_time = (
-            get_env("JOB_TIME", datetime.fromisoformat)
-            or job_time
-            or platform.default_job_time()
-        )
+        job_time = get_env("JOB_TIME", datetime.fromisoformat) or job_time or platform.default_job_time()
         data_root = get_env("DATA_ROOT") or data_root or platform.default_data_root()
         num_executors = get_env("NUM_EXECUTORS", int) or num_executors or 0
         ray_address = get_env("RAY_ADDRESS") or ray_address
         bind_numa_node = get_env("BIND_NUMA_NODE") == "1" or bind_numa_node
-        memory_allocator = (
-            get_env("MEMORY_ALLOCATOR")
-            or memory_allocator
-            or platform.default_memory_allocator()
-        )
+        memory_allocator = get_env("MEMORY_ALLOCATOR") or memory_allocator or platform.default_memory_allocator()
 
         config = Config(
             job_id=job_id,

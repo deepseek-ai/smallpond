@@ -55,9 +55,7 @@ class WorkItem(object):
     ) -> None:
         self._cpu_limit = cpu_limit
         self._gpu_limit = gpu_limit
-        self._memory_limit = (
-            np.int64(memory_limit) if memory_limit is not None else None
-        )
+        self._memory_limit = np.int64(memory_limit) if memory_limit is not None else None
         self._cpu_boost = 1
         self._memory_boost = 1
         self._numa_node = None
@@ -88,11 +86,7 @@ class WorkItem(object):
 
     @property
     def memory_limit(self) -> np.int64:
-        return (
-            np.int64(self._memory_boost * self._memory_limit)
-            if self._memory_limit
-            else 0
-        )
+        return np.int64(self._memory_boost * self._memory_limit) if self._memory_limit else 0
 
     @property
     def elapsed_time(self) -> float:
@@ -142,13 +136,7 @@ class WorkItem(object):
         return (
             self._memory_limit is not None
             and self.status == WorkStatus.CRASHED
-            and (
-                isinstance(self.exception, (OutOfMemory, MemoryError))
-                or (
-                    isinstance(self.exception, NonzeroExitCode)
-                    and nonzero_exitcode_as_oom
-                )
-            )
+            and (isinstance(self.exception, (OutOfMemory, MemoryError)) or (isinstance(self.exception, NonzeroExitCode) and nonzero_exitcode_as_oom))
         )
 
     def run(self) -> bool:
@@ -175,9 +163,7 @@ class WorkItem(object):
                 else:
                     self.status = WorkStatus.FAILED
             except Exception as ex:
-                logger.opt(exception=ex).error(
-                    f"{repr(self)} crashed with error. node location at {self.location}"
-                )
+                logger.opt(exception=ex).error(f"{repr(self)} crashed with error. node location at {self.location}")
                 self.status = WorkStatus.CRASHED
                 self.exception = ex
             finally:
@@ -204,25 +190,18 @@ class WorkBatch(WorkItem):
         cpu_limit = max(w.cpu_limit for w in works)
         gpu_limit = max(w.gpu_limit for w in works)
         memory_limit = max(w.memory_limit for w in works)
-        super().__init__(
-            f"{self.__class__.__name__}-{key}", cpu_limit, gpu_limit, memory_limit
-        )
+        super().__init__(f"{self.__class__.__name__}-{key}", cpu_limit, gpu_limit, memory_limit)
         self.works = works
 
     def __str__(self) -> str:
-        return (
-            super().__str__()
-            + f", works[{len(self.works)}]={self.works[:1]}...{self.works[-1:]}"
-        )
+        return super().__str__() + f", works[{len(self.works)}]={self.works[:1]}...{self.works[-1:]}"
 
     def run(self) -> bool:
         logger.info(f"processing {len(self.works)} works in the batch")
         for index, work in enumerate(self.works):
             work.exec_id = self.exec_id
             if work.exec(self.exec_cq) != WorkStatus.SUCCEED:
-                logger.error(
-                    f"work item #{index+1}/{len(self.works)} in {self.key} failed: {work}"
-                )
+                logger.error(f"work item #{index+1}/{len(self.works)} in {self.key} failed: {work}")
                 return False
         logger.info(f"done {len(self.works)} works in the batch")
         return True
@@ -375,9 +354,7 @@ class WorkQueueOnFilesystem(WorkQueue):
             os.rename(tempfile_path, enqueued_path)
             return True
         except OSError as err:
-            logger.critical(
-                f"failed to rename {tempfile_path} to {enqueued_path}: {err}"
-            )
+            logger.critical(f"failed to rename {tempfile_path} to {enqueued_path}: {err}")
             return False
 
 
@@ -405,27 +382,17 @@ def count_objects(obj, object_cnt=None, visited_objs=None, depth=0):
         object_cnt[class_name] = (cnt + 1, size + sys.getsizeof(obj))
 
         key_attributes = ("__self__", "__dict__", "__slots__")
-        if not isinstance(obj, (bool, str, int, float, type(None))) and any(
-            attr_name in key_attributes for attr_name in dir(obj)
-        ):
+        if not isinstance(obj, (bool, str, int, float, type(None))) and any(attr_name in key_attributes for attr_name in dir(obj)):
             logger.debug(f"{' ' * depth}{class_name}@{id(obj):x}")
             for attr_name in dir(obj):
                 try:
-                    if (
-                        not attr_name.startswith("__") or attr_name in key_attributes
-                    ) and not isinstance(
+                    if (not attr_name.startswith("__") or attr_name in key_attributes) and not isinstance(
                         getattr(obj.__class__, attr_name, None), property
                     ):
-                        logger.debug(
-                            f"{' ' * depth}{class_name}.{attr_name}@{id(obj):x}"
-                        )
-                        count_objects(
-                            getattr(obj, attr_name), object_cnt, visited_objs, depth + 1
-                        )
+                        logger.debug(f"{' ' * depth}{class_name}.{attr_name}@{id(obj):x}")
+                        count_objects(getattr(obj, attr_name), object_cnt, visited_objs, depth + 1)
                 except Exception as ex:
-                    logger.warning(
-                        f"failed to get '{attr_name}' from {repr(obj)}: {ex}"
-                    )
+                    logger.warning(f"failed to get '{attr_name}' from {repr(obj)}: {ex}")
 
 
 def main():
@@ -433,23 +400,13 @@ def main():
 
     from smallpond.execution.task import Probe
 
-    parser = argparse.ArgumentParser(
-        prog="workqueue.py", description="Work Queue Reader"
-    )
+    parser = argparse.ArgumentParser(prog="workqueue.py", description="Work Queue Reader")
     parser.add_argument("wq_root", help="Work queue root path")
     parser.add_argument("-f", "--work_filter", default="", help="Work item filter")
-    parser.add_argument(
-        "-x", "--expand_batch", action="store_true", help="Expand batched works"
-    )
-    parser.add_argument(
-        "-c", "--count_object", action="store_true", help="Count number of objects"
-    )
-    parser.add_argument(
-        "-n", "--top_n_class", default=20, type=int, help="Show the top n classes"
-    )
-    parser.add_argument(
-        "-l", "--log_level", default="INFO", help="Logging message level"
-    )
+    parser.add_argument("-x", "--expand_batch", action="store_true", help="Expand batched works")
+    parser.add_argument("-c", "--count_object", action="store_true", help="Count number of objects")
+    parser.add_argument("-n", "--top_n_class", default=20, type=int, help="Show the top n classes")
+    parser.add_argument("-l", "--log_level", default="INFO", help="Logging message level")
     args = parser.parse_args()
 
     logger.remove()
@@ -468,9 +425,7 @@ def main():
             if args.count_object:
                 object_cnt = {}
                 count_objects(work, object_cnt)
-                sorted_counts = sorted(
-                    [(v, k) for k, v in object_cnt.items()], reverse=True
-                )
+                sorted_counts = sorted([(v, k) for k, v in object_cnt.items()], reverse=True)
                 for count, class_name in sorted_counts[: args.top_n_class]:
                     logger.info(f"  {class_name}: {count}")
 

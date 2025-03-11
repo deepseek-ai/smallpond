@@ -24,9 +24,7 @@ def overall_stats(
 ):
     from smallpond.logical.node import DataSetPartitionNode, DataSinkNode, SqlEngineNode
 
-    n = SqlEngineNode(
-        ctx, inp, sql_per_part, cpu_limit=cpu_limit, memory_limit=memory_limit
-    )
+    n = SqlEngineNode(ctx, inp, sql_per_part, cpu_limit=cpu_limit, memory_limit=memory_limit)
     p = DataSetPartitionNode(ctx, (n,), npartitions=1)
     n2 = SqlEngineNode(
         ctx,
@@ -59,9 +57,7 @@ def execute_command(cmd: str, env: Dict[str, str] = None, shell=False):
             raise subprocess.CalledProcessError(return_code, cmd)
 
 
-def cprofile_to_string(
-    perf_profile: cProfile.Profile, order_by=pstats.SortKey.TIME, top_k=20
-):
+def cprofile_to_string(perf_profile: cProfile.Profile, order_by=pstats.SortKey.TIME, top_k=20):
     perf_profile.disable()
     pstats_output = io.StringIO()
     profile_stats = pstats.Stats(perf_profile, stream=pstats_output)
@@ -111,9 +107,7 @@ class ConcurrentIter(object):
     """
 
     def __init__(self, iterable: Iterable, max_buffer_size=1) -> None:
-        assert isinstance(
-            iterable, Iterable
-        ), f"expect an iterable but found: {repr(iterable)}"
+        assert isinstance(iterable, Iterable), f"expect an iterable but found: {repr(iterable)}"
         self.__iterable = iterable
         self.__queue = queue.Queue(max_buffer_size)
         self.__last = object()
@@ -194,6 +188,4 @@ class InterceptHandler(logging.Handler):
             frame = frame.f_back
             depth += 1
 
-        logger.opt(depth=depth, exception=record.exc_info).log(
-            level, record.getMessage()
-        )
+        logger.opt(depth=depth, exception=record.exc_info).log(level, record.getMessage())

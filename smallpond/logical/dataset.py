@@ -206,9 +206,7 @@ class DataSet(object):
                     resolved_paths.append(path)
             if wildcard_paths:
                 if len(wildcard_paths) == 1:
-                    expanded_paths = glob.glob(
-                        wildcard_paths[0], recursive=self.recursive
-                    )
+                    expanded_paths = glob.glob(wildcard_paths[0], recursive=self.recursive)
                 else:
                     logger.debug(
                         "resolving {} paths with wildcards in {}",
@@ -247,9 +245,7 @@ class DataSet(object):
             if self.root_dir is None:
                 self._absolute_paths = sorted(self.paths)
             else:
-                self._absolute_paths = [
-                    os.path.join(self.root_dir, p) for p in sorted(self.paths)
-                ]
+                self._absolute_paths = [os.path.join(self.root_dir, p) for p in sorted(self.paths)]
         return self._absolute_paths
 
     def sql_query_fragment(
@@ -340,23 +336,15 @@ class DataSet(object):
         return file_partitions
 
     @functools.lru_cache
-    def partition_by_files(
-        self, npartition: int, random_shuffle: bool = False
-    ) -> "List[DataSet]":
+    def partition_by_files(self, npartition: int, random_shuffle: bool = False) -> "List[DataSet]":
         """
         Evenly split into `npartition` datasets by files.
         """
         assert npartition > 0, f"npartition has negative value: {npartition}"
         if npartition > self.num_files:
-            logger.debug(
-                f"number of partitions {npartition} is greater than the number of files {self.num_files}"
-            )
+            logger.debug(f"number of partitions {npartition} is greater than the number of files {self.num_files}")
 
-        resolved_paths = (
-            random.sample(self.resolved_paths, len(self.resolved_paths))
-            if random_shuffle
-            else self.resolved_paths
-        )
+        resolved_paths = random.sample(self.resolved_paths, len(self.resolved_paths)) if random_shuffle else self.resolved_paths
         evenly_split_groups = split_into_rows(resolved_paths, npartition)
         num_paths_in_groups = list(map(len, evenly_split_groups))
 
@@ -367,11 +355,7 @@ class DataSet(object):
         logger.debug(
             f"created {npartition} file partitions (min #files: {min(num_paths_in_groups)}, max #files: {max(num_paths_in_groups)}, avg #files: {sum(num_paths_in_groups)/len(num_paths_in_groups):.3f}) from {self}"
         )
-        return (
-            random.sample(file_partitions, len(file_partitions))
-            if random_shuffle
-            else file_partitions
-        )
+        return random.sample(file_partitions, len(file_partitions)) if random_shuffle else file_partitions
 
 
 class PartitionedDataSet(DataSet):
@@ -463,9 +447,7 @@ class CsvDataSet(DataSet):
         union_by_name=False,
     ) -> None:
         super().__init__(paths, root_dir, recursive, columns, union_by_name)
-        assert isinstance(
-            schema, OrderedDict
-        ), f"type of csv schema is not OrderedDict: {type(schema)}"
+        assert isinstance(schema, OrderedDict), f"type of csv schema is not OrderedDict: {type(schema)}"
         self.schema = schema
         self.delim = delim
         self.max_line_size = max_line_size
@@ -492,14 +474,8 @@ class CsvDataSet(DataSet):
         filesystem: fsspec.AbstractFileSystem = None,
         conn: duckdb.DuckDBPyConnection = None,
     ) -> str:
-        schema_str = ", ".join(
-            map(lambda x: f"'{x[0]}': '{x[1]}'", self.schema.items())
-        )
-        max_line_size_str = (
-            f"max_line_size={self.max_line_size}, "
-            if self.max_line_size is not None
-            else ""
-        )
+        schema_str = ", ".join(map(lambda x: f"'{x[0]}': '{x[1]}'", self.schema.items()))
+        max_line_size_str = f"max_line_size={self.max_line_size}, " if self.max_line_size is not None else ""
         return (
             f"( select {self._column_str} from read_csv([ {self._resolved_path_str} ], delim='{self.delim}', columns={{ {schema_str} }}, header={self.header}, "
             f"{max_line_size_str} parallel={self.parallel}, union_by_name={self.union_by_name}) )"
@@ -552,9 +528,7 @@ class JsonDataSet(DataSet):
         filesystem: fsspec.AbstractFileSystem = None,
         conn: duckdb.DuckDBPyConnection = None,
     ) -> str:
-        schema_str = ", ".join(
-            map(lambda x: f"'{x[0]}': '{x[1]}'", self.schema.items())
-        )
+        schema_str = ", ".join(map(lambda x: f"'{x[0]}': '{x[1]}'", self.schema.items()))
         return (
             f"( select {self._column_str} from read_json([ {self._resolved_path_str} ], format='{self.format}', columns={{ {schema_str} }}, "
             f"maximum_object_size={self.max_object_size}, union_by_name={self.union_by_name}) )"
@@ -614,11 +588,7 @@ class ParquetDataSet(DataSet):
         )
         # merge row ranges if any dataset has resolved row ranges
         if any(dataset._resolved_row_ranges is not None for dataset in datasets):
-            dataset._resolved_row_ranges = [
-                row_range
-                for dataset in datasets
-                for row_range in dataset.resolved_row_ranges
-            ]
+            dataset._resolved_row_ranges = [row_range for dataset in datasets for row_range in dataset.resolved_row_ranges]
         return dataset
 
     @staticmethod
@@ -655,10 +625,7 @@ class ParquetDataSet(DataSet):
                     # read parquet metadata to get number of rows
                     metadata = parquet.read_metadata(path)
                     num_rows = metadata.num_rows
-                    uncompressed_data_size = sum(
-                        metadata.row_group(i).total_byte_size
-                        for i in range(metadata.num_row_groups)
-                    )
+                    uncompressed_data_size = sum(metadata.row_group(i).total_byte_size for i in range(metadata.num_row_groups))
                     return RowRange(
                         path,
                         data_size=uncompressed_data_size,
@@ -667,20 +634,14 @@ class ParquetDataSet(DataSet):
                         end=num_rows,
                     )
 
-                with ThreadPoolExecutor(
-                    max_workers=min(32, len(self.resolved_paths))
-                ) as pool:
-                    self._resolved_row_ranges = list(
-                        pool.map(resolve_row_range, self.resolved_paths)
-                    )
+                with ThreadPoolExecutor(max_workers=min(32, len(self.resolved_paths))) as pool:
+                    self._resolved_row_ranges = list(pool.map(resolve_row_range, self.resolved_paths))
         return self._resolved_row_ranges
 
     @property
     def num_rows(self) -> int:
         if self._resolved_num_rows is None:
-            self._resolved_num_rows = sum(
-                row_range.num_rows for row_range in self.resolved_row_ranges
-            )
+            self._resolved_num_rows = sum(row_range.num_rows for row_range in self.resolved_row_ranges)
         return self._resolved_num_rows
 
     @property
@@ -695,29 +656,19 @@ class ParquetDataSet(DataSet):
         """
         Return the estimated data size in bytes.
         """
-        return sum(
-            row_range.estimated_data_size for row_range in self.resolved_row_ranges
-        )
+        return sum(row_range.estimated_data_size for row_range in self.resolved_row_ranges)
 
     def sql_query_fragment(
         self,
         filesystem: fsspec.AbstractFileSystem = None,
         conn: duckdb.DuckDBPyConnection = None,
     ) -> str:
-        extra_parameters = (
-            "".join(f", {col}=true" for col in self.generated_columns)
-            if self.generated_columns
-            else ""
-        )
+        extra_parameters = "".join(f", {col}=true" for col in self.generated_columns) if self.generated_columns else ""
         parquet_file_queries = []
         full_row_ranges = []
 
         for row_range in self.resolved_row_ranges:
-            path = (
-                filesystem.unstrip_protocol(row_range.path)
-                if filesystem
-                else row_range.path
-            )
+            path = filesystem.unstrip_protocol(row_range.path) if filesystem else row_range.path
             if row_range.num_rows == row_range.file_num_rows:
                 full_row_ranges.append(row_range)
             else:
@@ -744,9 +695,7 @@ class ParquetDataSet(DataSet):
                 full_row_ranges[largest_index],
                 full_row_ranges[0],
             )
-            parquet_file_str = ",\n            ".join(
-                map(lambda x: f"'{x.path}'", full_row_ranges)
-            )
+            parquet_file_str = ",\n            ".join(map(lambda x: f"'{x.path}'", full_row_ranges))
             parquet_file_queries.insert(
                 0,
                 f"""
@@ -771,11 +720,7 @@ class ParquetDataSet(DataSet):
 
         tables = []
         if self.resolved_row_ranges:
-            tables.append(
-                load_from_parquet_files(
-                    self.resolved_row_ranges, self.columns, max_workers, filesystem
-                )
-            )
+            tables.append(load_from_parquet_files(self.resolved_row_ranges, self.columns, max_workers, filesystem))
         return arrow.concat_tables(tables)
 
     def to_batch_reader(
@@ -795,18 +740,14 @@ class ParquetDataSet(DataSet):
         )
 
     @functools.lru_cache
-    def partition_by_files(
-        self, npartition: int, random_shuffle: bool = False
-    ) -> "List[ParquetDataSet]":
+    def partition_by_files(self, npartition: int, random_shuffle: bool = False) -> "List[ParquetDataSet]":
         if self._resolved_row_ranges is not None:
             return self.partition_by_rows(npartition, random_shuffle)
         else:
             return super().partition_by_files(npartition, random_shuffle)
 
     @functools.lru_cache
-    def partition_by_rows(
-        self, npartition: int, random_shuffle: bool = False
-    ) -> "List[ParquetDataSet]":
+    def partition_by_rows(self, npartition: int, random_shuffle: bool = False) -> "List[ParquetDataSet]":
         """
         Evenly split the dataset into `npartition` partitions by rows.
         If `random_shuffle` is True, shuffle the files before partitioning.
@@ -814,11 +755,7 @@ class ParquetDataSet(DataSet):
         assert npartition > 0, f"npartition has negative value: {npartition}"
 
         resolved_row_ranges = self.resolved_row_ranges
-        resolved_row_ranges = (
-            random.sample(resolved_row_ranges, len(resolved_row_ranges))
-            if random_shuffle
-            else resolved_row_ranges
-        )
+        resolved_row_ranges = random.sample(resolved_row_ranges, len(resolved_row_ranges)) if random_shuffle else resolved_row_ranges
 
         def create_dataset(row_ranges: List[RowRange]) -> ParquetDataSet:
             row_ranges = sorted(row_ranges, key=lambda x: x.path)
@@ -833,12 +770,7 @@ class ParquetDataSet(DataSet):
             dataset._resolved_row_ranges = row_ranges
             return dataset
 
-        return [
-            create_dataset(row_ranges)
-            for row_ranges in RowRange.partition_by_rows(
-                resolved_row_ranges, npartition
-            )
-        ]
+        return [create_dataset(row_ranges) for row_ranges in RowRange.partition_by_rows(resolved_row_ranges, npartition)]
 
     @functools.lru_cache
     def partition_by_size(self, max_partition_size: int) -> "List[ParquetDataSet]":
@@ -847,16 +779,12 @@ class ParquetDataSet(DataSet):
         """
         if self.empty:
             return []
-        estimated_data_size = sum(
-            row_range.estimated_data_size for row_range in self.resolved_row_ranges
-        )
+        estimated_data_size = sum(row_range.estimated_data_size for row_range in self.resolved_row_ranges)
         npartition = estimated_data_size // max_partition_size + 1
         return self.partition_by_rows(npartition)
 
     @staticmethod
-    def _read_partition_key(
-        path: str, data_partition_column: str, hive_partitioning: bool
-    ) -> int:
+    def _read_partition_key(path: str, data_partition_column: str, hive_partitioning: bool) -> int:
         """
         Get the partition key of the parquet file.
 
@@ -874,9 +802,7 @@ class ParquetDataSet(DataSet):
             try:
                 return int(key)
             except ValueError:
-                logger.error(
-                    f"cannot parse partition key '{data_partition_column}' of {path} from: {key}"
-                )
+                logger.error(f"cannot parse partition key '{data_partition_column}' of {path} from: {key}")
                 raise
 
         if hive_partitioning:
@@ -884,9 +810,7 @@ class ParquetDataSet(DataSet):
             for part in path.split(os.path.sep):
                 if part.startswith(path_part_prefix):
                     return parse_partition_key(part[len(path_part_prefix) :])
-            raise RuntimeError(
-                f"cannot extract hive partition key '{data_partition_column}' from path: {path}"
-            )
+            raise RuntimeError(f"cannot extract hive partition key '{data_partition_column}' from path: {path}")
 
         with parquet.ParquetFile(path) as file:
             kv_metadata = file.schema_arrow.metadata or file.metadata.metadata
@@ -896,36 +820,22 @@ class ParquetDataSet(DataSet):
                     if key == PARQUET_METADATA_KEY_PREFIX + data_partition_column:
                         return parse_partition_key(val)
             if file.metadata.num_rows == 0:
-                logger.warning(
-                    f"cannot read partition keys from empty parquet file: {path}"
-                )
+                logger.warning(f"cannot read partition keys from empty parquet file: {path}")
                 return None
-            for batch in file.iter_batches(
-                batch_size=128, columns=[data_partition_column], use_threads=False
-            ):
-                assert (
-                    data_partition_column in batch.column_names
-                ), f"cannot find column '{data_partition_column}' in {batch.column_names}"
-                assert (
-                    batch.num_columns == 1
-                ), f"unexpected num of columns: {batch.column_names}"
+            for batch in file.iter_batches(batch_size=128, columns=[data_partition_column], use_threads=False):
+                assert data_partition_column in batch.column_names, f"cannot find column '{data_partition_column}' in {batch.column_names}"
+                assert batch.num_columns == 1, f"unexpected num of columns: {batch.column_names}"
                 uniq_partition_keys = set(batch.columns[0].to_pylist())
-                assert (
-                    uniq_partition_keys and len(uniq_partition_keys) == 1
-                ), f"partition keys found in {path} not unique: {uniq_partition_keys}"
+                assert uniq_partition_keys and len(uniq_partition_keys) == 1, f"partition keys found in {path} not unique: {uniq_partition_keys}"
                 return uniq_partition_keys.pop()
 
-    def load_partitioned_datasets(
-        self, npartition: int, data_partition_column: str, hive_partitioning=False
-    ) -> "List[ParquetDataSet]":
+    def load_partitioned_datasets(self, npartition: int, data_partition_column: str, hive_partitioning=False) -> "List[ParquetDataSet]":
         """
         Split the dataset into a list of partitioned datasets.
         """
         assert npartition > 0, f"npartition has negative value: {npartition}"
         if npartition > self.num_files:
-            logger.debug(
-                f"number of partitions {npartition} is greater than the number of files {self.num_files}"
-            )
+            logger.debug(f"number of partitions {npartition} is greater than the number of files {self.num_files}")
 
         file_partitions: List[ParquetDataSet] = self._init_file_partitions(npartition)
         for dataset in file_partitions:
@@ -940,17 +850,13 @@ class ParquetDataSet(DataSet):
 
         with ThreadPoolExecutor(min(32, len(self.resolved_paths))) as pool:
             partition_keys = pool.map(
-                lambda path: ParquetDataSet._read_partition_key(
-                    path, data_partition_column, hive_partitioning
-                ),
+                lambda path: ParquetDataSet._read_partition_key(path, data_partition_column, hive_partitioning),
                 self.resolved_paths,
             )
 
         for row_range, partition_key in zip(self.resolved_row_ranges, partition_keys):
             if partition_key is not None:
-                assert (
-                    0 <= partition_key <= npartition
-                ), f"invalid partition key {partition_key} found in {row_range.path}"
+                assert 0 <= partition_key <= npartition, f"invalid partition key {partition_key} found in {row_range.path}"
                 dataset = file_partitions[partition_key]
                 dataset.paths.append(row_range.path)
                 dataset._absolute_paths.append(row_range.path)
@@ -964,20 +870,14 @@ class ParquetDataSet(DataSet):
         """
         Remove empty parquet files from the dataset.
         """
-        new_row_ranges = [
-            row_range
-            for row_range in self.resolved_row_ranges
-            if row_range.num_rows > 0
-        ]
+        new_row_ranges = [row_range for row_range in self.resolved_row_ranges if row_range.num_rows > 0]
         if len(new_row_ranges) == 0:
             # keep at least one file to avoid empty dataset
             new_row_ranges = self.resolved_row_ranges[:1]
         if len(new_row_ranges) == len(self.resolved_row_ranges):
             # no empty files found
             return
-        logger.info(
-            f"removed {len(self.resolved_row_ranges) - len(new_row_ranges)}/{len(self.resolved_row_ranges)} empty parquet files from {self}"
-        )
+        logger.info(f"removed {len(self.resolved_row_ranges) - len(new_row_ranges)}/{len(self.resolved_row_ranges)} empty parquet files from {self}")
         self._resolved_row_ranges = new_row_ranges
         self._resolved_paths = [row_range.path for row_range in new_row_ranges]
         self._absolute_paths = self._resolved_paths
@@ -997,9 +897,7 @@ class SqlQueryDataSet(DataSet):
     def __init__(
         self,
         sql_query: str,
-        query_builder: Callable[
-            [duckdb.DuckDBPyConnection, fsspec.AbstractFileSystem], str
-        ] = None,
+        query_builder: Callable[[duckdb.DuckDBPyConnection, fsspec.AbstractFileSystem], str] = None,
     ) -> None:
         super().__init__([])
         self.sql_query = sql_query
@@ -1007,9 +905,7 @@ class SqlQueryDataSet(DataSet):
 
     @property
     def num_rows(self) -> int:
-        num_rows = duckdb.sql(
-            f"select count(*) as num_rows from {self.sql_query_fragment()}"
-        ).fetchall()
+        num_rows = duckdb.sql(f"select count(*) as num_rows from {self.sql_query_fragment()}").fetchall()
         return num_rows[0][0]
 
     def sql_query_fragment(
@@ -1017,11 +913,7 @@ class SqlQueryDataSet(DataSet):
         filesystem: fsspec.AbstractFileSystem = None,
         conn: duckdb.DuckDBPyConnection = None,
     ) -> str:
-        sql_query = (
-            self.sql_query
-            if self.query_builder is None
-            else self.query_builder(conn, filesystem)
-        )
+        sql_query = self.sql_query if self.query_builder is None else self.query_builder(conn, filesystem)
         return f"( {sql_query} )"
 
 

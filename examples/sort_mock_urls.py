@@ -1,3 +1,23 @@
+"""Low-Level URL Sorting Example with Custom Node Implementation
+=================================================
+
+This script demonstrates advanced usage of Smallpond's low-level Node API for URL sorting.
+It shows how to build a complex data processing pipeline using custom nodes and multiple
+execution engines (DuckDB and Arrow).
+
+Key Features:
+    - Uses Driver class for advanced execution control
+    - Demonstrates both SQL and Arrow-based sorting approaches
+    - Shows how to implement custom processing nodes
+    - Multi-stage pipeline with explicit node dependencies:
+        1. Data Loading (DataSourceNode)
+        2. Initial Partitioning (DataSetPartitionNode)
+        3. URL Parsing (SqlEngineNode)
+        4. Hash-based Partitioning (HashPartitionNode)
+        5. Sorting (SqlEngineNode or SortUrlsNode)
+        6. Final Result Collection (DataSetPartitionNode)
+"""
+
 import logging
 import os.path
 from typing import List, Optional, OrderedDict

@@ -1,3 +1,19 @@
+"""High-Level URL Sorting Example using DataFrame API
+==========================================
+
+This script demonstrates the simplified DataFrame API approach to URL sorting in Smallpond.
+It shows how to process and sort URLs using a high-level, pandas-like interface that
+automatically handles distributed execution.
+
+Key Features:
+    - Uses smallpond.init() for simplified setup
+    - Supports both local and distributed execution via Ray
+    - Partitioned sorting for better scalability:
+        * First partitions data by host (hash_by="host")
+        * Then sorts within each partition (partial_sort)
+    - For global sorting across all partitions, use:
+        df.map("SELECT * FROM {0} ORDER BY column")
+"""
 import argparse
 from typing import List
 
@@ -11,6 +27,7 @@ def sort_mock_urls_v2(
     dataset = sp.read_csv(
         input_paths, schema={"urlstr": "varchar", "valstr": "varchar"}, delim=r"\t"
     ).repartition(npartitions)
+    #Creates Dataframe of host, url, payload. Uses DuckDB SQL syntax to transform.
     urls = dataset.map(
         """
     split_part(urlstr, '/', 1) as host,
@@ -19,6 +36,8 @@ def sort_mock_urls_v2(
   """
     )
     urls = urls.repartition(npartitions, hash_by="host")
+    #Sorts each partition independently, sorting done locally in each partition, not globla partition
+    #For Global sorting use SQL like df.map("""SELECT * FROM {0} ORDER BY sort_column""")
     sorted_urls = urls.partial_sort(by=["host"])
     sorted_urls.write_parquet(output_path)
 

@@ -14,7 +14,7 @@ TB = 1024 * GB
 
 DEFAULT_MAX_RETRY_COUNT = 5
 DEFAULT_MAX_FAIL_COUNT = 3
-# duckdb default row group size https://duckdb.org/docs/data/parquet/tips#selecting-a-row_group_size
+# duckdb default row group size https://duckdb.org/docs/stable/data/parquet/tips#selecting-a-row_group_size
 MAX_ROW_GROUP_SIZE = 10 * 1024 * 1024
 MAX_ROW_GROUP_BYTES = 2 * GB
 MAX_NUM_ROW_GROUPS = 256

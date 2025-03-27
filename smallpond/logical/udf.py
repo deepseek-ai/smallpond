@@ -102,7 +102,7 @@ class UDFStructType:
     """
     A wrapper of duckdb.struct_type, eg: UDFStructType({'host': 'VARCHAR', 'path:' 'VARCHAR', 'query': 'VARCHAR'})
 
-    See https://duckdb.org/docs/api/python/types.html#a-field_one-b-field_two--n-field_n
+    See https://duckdb.org/docs/stable/clients/python/types.html#a-field_one-b-field_two--n-field_n
     """
 
     def __init__(self, fields: Union[Dict[str, str], List[str]]) -> None:
@@ -116,7 +116,7 @@ class UDFListType:
     """
     A wrapper of duckdb.list_type, eg: UDFListType(UDFType.INTEGER)
 
-    See https://duckdb.org/docs/api/python/types.html#listchild_type
+    See https://duckdb.org/docs/stable/clients/python/types.html#listchild_type
     """
 
     def __init__(self, child) -> None:
@@ -130,7 +130,7 @@ class UDFMapType:
     """
     A wrapper of duckdb.map_type, eg: UDFMapType(UDFType.VARCHAR, UDFType.INTEGER)
 
-    See https://duckdb.org/docs/api/python/types.html#dictkey_type-value_type
+    See https://duckdb.org/docs/stable/clients/python/types.html#dictkey_type-value_type
     """
 
     def __init__(self, key, value) -> None:

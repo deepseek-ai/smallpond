@@ -81,7 +81,7 @@ class DataSet(object):
         columns, optional
             Only load the specified columns if not None.
         union_by_name, optional
-            Unify the columns of different files by name (see https://duckdb.org/docs/data/multiple_files/combining_schemas#union-by-name).
+            Unify the columns of different files by name (see https://duckdb.org/docs/stable/data/multiple_files/combining_schemas#union-by-name).
         """
         self.paths = [paths] if isinstance(paths, str) else paths
         "The paths to the dataset files."

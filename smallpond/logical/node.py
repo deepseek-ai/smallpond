@@ -592,7 +592,7 @@ class ArrowComputeNode(Node):
             The number of rows stored in each row group of parquet file.
             Large row group size provides more opportunities to compress the data.
             Small row groups size could make filtering rows faster and achieve high concurrency.
-            See https://duckdb.org/docs/data/parquet/tips.html#selecting-a-row_group_size.
+            See https://duckdb.org/docs/stable/data/parquet/tips.html#selecting-a-row_group_size.
         parquet_dictionary_encoding, optional
             Specify if we should use dictionary encoding in general or only for some columns.
             See `use_dictionary` in https://arrow.apache.org/docs/python/generated/pyarrow.parquet.ParquetWriter.html.
@@ -753,7 +753,7 @@ class ArrowStreamNode(Node):
             The number of rows stored in each row group of parquet file.
             Large row group size provides more opportunities to compress the data.
             Small row groups size could make filtering rows faster and achieve high concurrency.
-            See https://duckdb.org/docs/data/parquet/tips.html#selecting-a-row_group_size.
+            See https://duckdb.org/docs/stable/data/parquet/tips.html#selecting-a-row_group_size.
         parquet_dictionary_encoding, optional
             Specify if we should use dictionary encoding in general or only for some columns.
             See `use_dictionary` in https://arrow.apache.org/docs/python/generated/pyarrow.parquet.ParquetWriter.html.
@@ -984,7 +984,7 @@ class SqlEngineNode(Node):
             since UDF execution in duckdb is not highly paralleled.
         per_thread_output, optional
             If the final number of Parquet files is not important, writing one file per thread can significantly improve performance.
-            Also see https://duckdb.org/docs/data/parquet/tips.html#enabling-per_thread_output.
+            Also see https://duckdb.org/docs/stable/data/parquet/tips.html#enabling-per_thread_output.
         materialize_output, optional
             Query result is materialized to the underlying filesystem as parquet files if enabled.
         materialize_in_memory, optional
@@ -1002,7 +1002,7 @@ class SqlEngineNode(Node):
             The number of rows stored in each row group of parquet file.
             Large row group size provides more opportunities to compress the data.
             Small row groups size could make filtering rows faster and achieve high concurrency.
-            See https://duckdb.org/docs/data/parquet/tips.html#selecting-a-row_group_size.
+            See https://duckdb.org/docs/stable/data/parquet/tips.html#selecting-a-row_group_size.
         parquet_dictionary_encoding, optional
             Specify if we should use dictionary encoding in general or only for some columns.
             When encoding the column, if the dictionary size is too large, the column will fallback to PLAIN encoding.
@@ -1621,7 +1621,7 @@ class HashPartitionNode(PartitionNode):
             The number of rows stored in each row group of parquet file.
             Large row group size provides more opportunities to compress the data.
             Small row groups size could make filtering rows faster and achieve high concurrency.
-            See https://duckdb.org/docs/data/parquet/tips.html#selecting-a-row_group_size.
+            See https://duckdb.org/docs/stable/data/parquet/tips.html#selecting-a-row_group_size.
         parquet_dictionary_encoding, optional
             Specify if we should use dictionary encoding in general or only for some columns.
             See `use_dictionary` in https://arrow.apache.org/docs/python/generated/pyarrow.parquet.ParquetWriter.html.
@@ -1802,7 +1802,7 @@ class ProjectionNode(Node):
         generated_columns
             Auto generated columns, supported values: `filename`, `file_row_number`.
         union_by_name, optional
-            Unify the columns of different files by name (see https://duckdb.org/docs/data/multiple_files/combining_schemas#union-by-name).
+            Unify the columns of different files by name (see https://duckdb.org/docs/stable/data/multiple_files/combining_schemas#union-by-name).
 
         Examples
         --------

@@ -5,12 +5,12 @@ from enum import Enum
 from typing import Callable, Dict, List, Optional, Union
 
 import duckdb
-import duckdb.typing
+import duckdb.sqltypes
 
 
 class UDFType(Enum):
     """
-    A wrapper of duckdb.typing.DuckDBPyType
+    A wrapper of duckdb.sqltypes.DuckDBPyType
 
     See https://duckdb.org/docs/api/python/types.html
     """
@@ -41,61 +41,46 @@ class UDFType(Enum):
     BLOB = 24
     BIT = 25
     INTERVAL = 26
+    UHUGEINT = 27
 
-    def to_duckdb_type(self) -> duckdb.typing.DuckDBPyType:
-        if self == UDFType.SQLNULL:
-            return duckdb.typing.SQLNULL
-        elif self == UDFType.BOOLEAN:
-            return duckdb.typing.BOOLEAN
-        elif self == UDFType.TINYINT:
-            return duckdb.typing.TINYINT
-        elif self == UDFType.UTINYINT:
-            return duckdb.typing.UTINYINT
-        elif self == UDFType.SMALLINT:
-            return duckdb.typing.SMALLINT
-        elif self == UDFType.USMALLINT:
-            return duckdb.typing.USMALLINT
-        elif self == UDFType.INTEGER:
-            return duckdb.typing.INTEGER
-        elif self == UDFType.UINTEGER:
-            return duckdb.typing.UINTEGER
-        elif self == UDFType.BIGINT:
-            return duckdb.typing.BIGINT
-        elif self == UDFType.UBIGINT:
-            return duckdb.typing.UBIGINT
-        elif self == UDFType.HUGEINT:
-            return duckdb.typing.HUGEINT
-        elif self == UDFType.UUID:
-            return duckdb.typing.UUID
-        elif self == UDFType.FLOAT:
-            return duckdb.typing.FLOAT
-        elif self == UDFType.DOUBLE:
-            return duckdb.typing.DOUBLE
-        elif self == UDFType.DATE:
-            return duckdb.typing.DATE
-        elif self == UDFType.TIMESTAMP:
-            return duckdb.typing.TIMESTAMP
-        elif self == UDFType.TIMESTAMP_MS:
-            return duckdb.typing.TIMESTAMP_MS
-        elif self == UDFType.TIMESTAMP_NS:
-            return duckdb.typing.TIMESTAMP_NS
-        elif self == UDFType.TIMESTAMP_S:
-            return duckdb.typing.TIMESTAMP_S
-        elif self == UDFType.TIME:
-            return duckdb.typing.TIME
-        elif self == UDFType.TIME_TZ:
-            return duckdb.typing.TIME_TZ
-        elif self == UDFType.TIMESTAMP_TZ:
-            return duckdb.typing.TIMESTAMP_TZ
-        elif self == UDFType.VARCHAR:
-            return duckdb.typing.VARCHAR
-        elif self == UDFType.BLOB:
-            return duckdb.typing.BLOB
-        elif self == UDFType.BIT:
-            return duckdb.typing.BIT
-        elif self == UDFType.INTERVAL:
-            return duckdb.typing.INTERVAL
-        return None
+    def to_duckdb_type(self) -> duckdb.sqltypes.DuckDBPyType:
+        duckdb_type = _UDFTYPE_TO_DUCKDB.get(self)
+        if duckdb_type is None:
+            raise TypeError(f"UDFType {self.name} has no corresponding duckdb type mapping")
+        return duckdb_type
+
+
+# Mapping from UDFType enum members to duckdb.sqltypes constants.
+# Adding a new type here is sufficient; no other code needs to change.
+_UDFTYPE_TO_DUCKDB = {
+    UDFType.SQLNULL: duckdb.sqltypes.SQLNULL,
+    UDFType.BOOLEAN: duckdb.sqltypes.BOOLEAN,
+    UDFType.TINYINT: duckdb.sqltypes.TINYINT,
+    UDFType.UTINYINT: duckdb.sqltypes.UTINYINT,
+    UDFType.SMALLINT: duckdb.sqltypes.SMALLINT,
+    UDFType.USMALLINT: duckdb.sqltypes.USMALLINT,
+    UDFType.INTEGER: duckdb.sqltypes.INTEGER,
+    UDFType.UINTEGER: duckdb.sqltypes.UINTEGER,
+    UDFType.BIGINT: duckdb.sqltypes.BIGINT,
+    UDFType.UBIGINT: duckdb.sqltypes.UBIGINT,
+    UDFType.HUGEINT: duckdb.sqltypes.HUGEINT,
+    UDFType.UHUGEINT: duckdb.sqltypes.UHUGEINT,
+    UDFType.UUID: duckdb.sqltypes.UUID,
+    UDFType.FLOAT: duckdb.sqltypes.FLOAT,
+    UDFType.DOUBLE: duckdb.sqltypes.DOUBLE,
+    UDFType.DATE: duckdb.sqltypes.DATE,
+    UDFType.TIMESTAMP: duckdb.sqltypes.TIMESTAMP,
+    UDFType.TIMESTAMP_MS: duckdb.sqltypes.TIMESTAMP_MS,
+    UDFType.TIMESTAMP_NS: duckdb.sqltypes.TIMESTAMP_NS,
+    UDFType.TIMESTAMP_S: duckdb.sqltypes.TIMESTAMP_S,
+    UDFType.TIME: duckdb.sqltypes.TIME,
+    UDFType.TIME_TZ: duckdb.sqltypes.TIME_TZ,
+    UDFType.TIMESTAMP_TZ: duckdb.sqltypes.TIMESTAMP_TZ,
+    UDFType.VARCHAR: duckdb.sqltypes.VARCHAR,
+    UDFType.BLOB: duckdb.sqltypes.BLOB,
+    UDFType.BIT: duckdb.sqltypes.BIT,
+    UDFType.INTERVAL: duckdb.sqltypes.INTERVAL,
+}
 
 
 class UDFStructType:
@@ -108,7 +93,7 @@ class UDFStructType:
     def __init__(self, fields: Union[Dict[str, str], List[str]]) -> None:
         self.fields = fields
 
-    def to_duckdb_type(self) -> duckdb.typing.DuckDBPyType:
+    def to_duckdb_type(self) -> duckdb.sqltypes.DuckDBPyType:
         return duckdb.struct_type(self.fields)
 
 
@@ -122,7 +107,7 @@ class UDFListType:
     def __init__(self, child) -> None:
         self.child = child
 
-    def to_duckdb_type(self) -> duckdb.typing.DuckDBPyType:
+    def to_duckdb_type(self) -> duckdb.sqltypes.DuckDBPyType:
         return duckdb.list_type(self.child.to_duckdb_type())
 
 
@@ -137,7 +122,7 @@ class UDFMapType:
         self.key = key
         self.value = value
 
-    def to_duckdb_type(self) -> duckdb.typing.DuckDBPyType:
+    def to_duckdb_type(self) -> duckdb.sqltypes.DuckDBPyType:
         return duckdb.map_type(self.key.to_duckdb_type(), self.value.to_duckdb_type())
 
 
@@ -149,7 +134,7 @@ class UDFAnyParameters:
     def __init__(self) -> None:
         pass
 
-    def to_duckdb_type(self) -> duckdb.typing.DuckDBPyType:
+    def to_duckdb_type(self) -> duckdb.sqltypes.DuckDBPyType:
         return None
 
 

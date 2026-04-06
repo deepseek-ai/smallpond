@@ -756,3 +756,39 @@ class TestExecution(TestFabric, unittest.TestCase):
             data_partitions.npartitions * 10,
             exec_plan.get_output("random_urls_k10").to_arrow_table().num_rows,
         )
+
+
+class TestDataSinkRowRanges(TestFabric, unittest.TestCase):
+    """Test that DataSinkTask preserves row ranges from partition_by_rows."""
+
+    def test_data_sink_preserves_row_ranges(self):
+        """
+        Verify that when input datasets have _resolved_row_ranges (from partition_by_rows),
+        DataSinkTask preserves them in the output dataset.
+        """
+        ctx = Context()
+        # Create a parquet dataset
+        dataset = ParquetDataSet(["tests/data/mock_urls/*.parquet"])
+        data_files = DataSourceNode(ctx, dataset)
+
+        # Partition by rows - this creates datasets with _resolved_row_ranges
+        data_partitions = DataSetPartitionNode(ctx, (data_files,), npartitions=3, partition_by_rows=True)
+
+        # Add DataSinkNode to collect the output
+        with tempfile.TemporaryDirectory(dir=self.output_root_abspath) as output_dir:
+            data_sink = DataSinkNode(ctx, (data_partitions,), output_path=output_dir)
+            plan = LogicalPlan(ctx, data_sink)
+
+            # Execute the plan
+            exec_plan = self.execute_plan(plan)
+            final_output = exec_plan.final_output
+
+            # Verify the output is a ParquetDataSet
+            self.assertIsInstance(final_output, ParquetDataSet)
+
+            # Verify row ranges are preserved
+            # (Note: after DataSink, paths point to output directory, but row ranges should still exist)
+            self.assertIsNotNone(final_output._resolved_row_ranges)
+
+            # Verify total row count matches
+            self.assertEqual(dataset.num_rows, final_output.num_rows)

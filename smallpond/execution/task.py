@@ -2957,7 +2957,24 @@ class DataSinkTask(Task):
             dst_paths = [runtime_output_dir / f"{p.stem}.{idx}{p.suffix}" for idx, p in enumerate(src_paths)]
 
         output_paths = src_paths if sink_type == "manifest" else [final_output_dir / p.name for p in dst_paths]
-        self.dataset = ParquetDataSet([str(p) for p in output_paths])  # FIXME: what if the dataset is not parquet?
+
+        # Create output ParquetDataSet, preserving row ranges from inputs if they exist
+        all_row_ranges = []
+        path_idx = 0
+        for inp_ds in self.input_datasets:
+            if inp_ds._resolved_row_ranges is not None:
+                for row_range in inp_ds._resolved_row_ranges:
+                    new_range = copy.copy(row_range)
+                    new_range.path = str(output_paths[path_idx])
+                    all_row_ranges.append(new_range)
+                    path_idx += 1
+
+        # Use merge() to preserve metadata (columns, generated_columns, union_by_name)
+        self.dataset = ParquetDataSet.merge([
+            ParquetDataSet([str(p)]) for p in output_paths
+        ])
+        if all_row_ranges:
+            self.dataset._resolved_row_ranges = all_row_ranges
 
         def copy_file(src_path: Path, dst_path: Path):
             # XXX: DO NOT use shutil.{copy, copy2, copyfileobj}

@@ -7,6 +7,23 @@ import subprocess
 
 import psutil
 
+from smallpond.execution.numa import get_numa_node_count
+
+
+def start_ray_worker(ray_address: str, cpu_count: int, memory: int = None):
+    command = [
+        "ray",
+        "start",
+        "--address",
+        ray_address,
+        "--num-cpus",
+        str(cpu_count),
+    ]
+    if memory is not None:
+        command.extend(["--memory", str(memory)])
+    subprocess.run(command, check=True)
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="smallpond worker")
     parser.add_argument(
@@ -29,42 +46,33 @@ if __name__ == "__main__":
     memory = psutil.virtual_memory().total
 
     if args.bind_numa_node:
-        import numa
-
-        numa_node_count = numa.info.get_num_configured_nodes()
-        cpu_count_per_socket = cpu_count // numa_node_count
-        memory_per_socket = memory // numa_node_count
-        for i in range(numa_node_count):
-            subprocess.run(
-                [
-                    "numactl",
-                    "-N",
-                    str(i),
-                    "-m",
-                    str(i),
-                    "ray",
-                    "start",
-                    "--address",
-                    args.ray_address,
-                    "--num-cpus",
-                    str(cpu_count_per_socket),
-                    "--memory",
-                    str(memory_per_socket),
-                ],
-                check=True,
-            )
+        numa_node_count = get_numa_node_count()
+        if numa_node_count == 1:
+            start_ray_worker(args.ray_address, cpu_count, memory)
+        else:
+            cpu_count_per_socket = cpu_count // numa_node_count
+            memory_per_socket = memory // numa_node_count
+            for i in range(numa_node_count):
+                subprocess.run(
+                    [
+                        "numactl",
+                        "-N",
+                        str(i),
+                        "-m",
+                        str(i),
+                        "ray",
+                        "start",
+                        "--address",
+                        args.ray_address,
+                        "--num-cpus",
+                        str(cpu_count_per_socket),
+                        "--memory",
+                        str(memory_per_socket),
+                    ],
+                    check=True,
+                )
     else:
-        subprocess.run(
-            [
-                "ray",
-                "start",
-                "--address",
-                args.ray_address,
-                "--num-cpus",
-                str(cpu_count),
-            ],
-            check=True,
-        )
+        start_ray_worker(args.ray_address, cpu_count)
 
     # keep printing logs
     while True:

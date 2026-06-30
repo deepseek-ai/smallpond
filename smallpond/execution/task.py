@@ -69,6 +69,7 @@ from smallpond.common import (
     round_up,
     split_into_rows,
 )
+from smallpond.execution.numa import get_numa_node_count
 from smallpond.execution.workqueue import WorkItem, WorkStatus
 from smallpond.io.arrow import (
     cast_columns_to_large_string,
@@ -245,12 +246,7 @@ class RuntimeContext(object):
 
     @property
     def numa_node_count(self):
-        if sys.platform == "darwin":
-            # numa is not supported on macos
-            return 1
-        import numa
-
-        return numa.info.get_num_configured_nodes()
+        return get_numa_node_count()
 
     @property
     def physical_cpu_count(self):

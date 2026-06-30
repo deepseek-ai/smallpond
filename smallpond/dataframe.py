@@ -239,8 +239,12 @@ class DataFrame:
         """
         Check if the data is ready on disk.
         """
-        if tasks := self.session._node_to_tasks.get(self.plan):
-            _, unready_tasks = ray.wait(tasks, timeout=0)
+        plan = self.optimized_plan or self.plan
+        if tasks := self.session._node_to_tasks.get(plan):
+            dataset_refs = [task._dataset_ref for task in tasks if task._dataset_ref is not None]
+            if len(dataset_refs) != len(tasks):
+                return False
+            _, unready_tasks = ray.wait(dataset_refs, timeout=0)
             return len(unready_tasks) == 0
         return False
 

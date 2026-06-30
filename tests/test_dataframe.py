@@ -131,6 +131,15 @@ def test_count(sp: Session):
     assert df.count() == 3
 
 
+def test_is_computed_after_compute(sp: Session):
+    df = sp.from_items([1, 2, 3])
+    assert not df.is_computed()
+
+    df.compute()
+
+    assert df.is_computed()
+
+
 def test_limit(sp: Session):
     df = sp.from_items(list(range(1000))).repartition(10, by_rows=True)
     assert df.limit(2).count() == 2

@@ -9,7 +9,10 @@ import math
 import os
 import pprint
 import random
-import resource
+try:
+    import resource
+except ImportError:
+    resource = None
 import shutil
 import sys
 import time
@@ -245,12 +248,15 @@ class RuntimeContext(object):
 
     @property
     def numa_node_count(self):
-        if sys.platform == "darwin":
-            # numa is not supported on macos
+        if sys.platform in ("darwin", "win32"):
+            # numa is not supported on macos or windows
             return 1
-        import numa
+        try:
+            import numa
 
-        return numa.info.get_num_configured_nodes()
+            return max(1, numa.info.get_num_configured_nodes())
+        except Exception:
+            return 1
 
     @property
     def physical_cpu_count(self):
@@ -826,6 +832,8 @@ class Task(WorkItem):
         return True
 
     def set_memory_limit(self, soft_limit: int, hard_limit: int):
+        if resource is None:
+            return
         soft_old, hard_old = resource.getrlimit(resource.RLIMIT_DATA)
         resource.setrlimit(resource.RLIMIT_DATA, (soft_limit, hard_limit))
         logger.debug(f"updated memory limit from ({soft_old/GB:.3f}GB, {hard_old/GB:.3f}GB) to ({soft_limit/GB:.3f}GB, {hard_limit/GB:.3f}GB)")
@@ -894,7 +902,7 @@ class Task(WorkItem):
                     self.perf_metrics[f"total {metric_name} size (MB)"] += sum(file_sizes) / MB
 
         self.perf_metrics["elapsed wall time (secs)"] += self.elapsed_time
-        if not self.exec_on_scheduler:
+        if not self.exec_on_scheduler and resource is not None:
             resource_usage = resource.getrusage(resource.RUSAGE_SELF)
             self.perf_metrics["max resident set size (MB)"] += resource_usage.ru_maxrss / 1024
             self.perf_metrics["user mode cpu time (secs)"] += resource_usage.ru_utime

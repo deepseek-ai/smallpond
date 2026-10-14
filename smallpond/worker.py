@@ -29,30 +29,47 @@ if __name__ == "__main__":
     memory = psutil.virtual_memory().total
 
     if args.bind_numa_node:
-        import numa
+        try:
+            import numa
 
-        numa_node_count = numa.info.get_num_configured_nodes()
-        cpu_count_per_socket = cpu_count // numa_node_count
-        memory_per_socket = memory // numa_node_count
-        for i in range(numa_node_count):
+            numa_node_count = max(1, numa.info.get_num_configured_nodes())
+        except Exception:
+            numa_node_count = 1
+
+        if numa_node_count == 1:
             subprocess.run(
                 [
-                    "numactl",
-                    "-N",
-                    str(i),
-                    "-m",
-                    str(i),
                     "ray",
                     "start",
                     "--address",
                     args.ray_address,
                     "--num-cpus",
-                    str(cpu_count_per_socket),
-                    "--memory",
-                    str(memory_per_socket),
+                    str(cpu_count),
                 ],
                 check=True,
             )
+        else:
+            cpu_count_per_socket = cpu_count // numa_node_count
+            memory_per_socket = memory // numa_node_count
+            for i in range(numa_node_count):
+                subprocess.run(
+                    [
+                        "numactl",
+                        "-N",
+                        str(i),
+                        "-m",
+                        str(i),
+                        "ray",
+                        "start",
+                        "--address",
+                        args.ray_address,
+                        "--num-cpus",
+                        str(cpu_count_per_socket),
+                        "--memory",
+                        str(memory_per_socket),
+                    ],
+                    check=True,
+                )
     else:
         subprocess.run(
             [

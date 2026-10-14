@@ -2957,7 +2957,66 @@ class DataSinkTask(Task):
             dst_paths = [runtime_output_dir / f"{p.stem}.{idx}{p.suffix}" for idx, p in enumerate(src_paths)]
 
         output_paths = src_paths if sink_type == "manifest" else [final_output_dir / p.name for p in dst_paths]
-        self.dataset = ParquetDataSet([str(p) for p in output_paths])  # FIXME: what if the dataset is not parquet?
+        output_path_strs = [str(p) for p in output_paths]
+
+        first_dataset = self.input_datasets[0] if self.input_datasets else None
+        if isinstance(first_dataset, PartitionedDataSet) and first_dataset.datasets:
+            first_dataset = first_dataset.datasets[0]
+
+        all_input_datasets = []
+        for d in self.input_datasets or []:
+            if isinstance(d, PartitionedDataSet):
+                all_input_datasets.extend(d.datasets)
+            else:
+                all_input_datasets.append(d)
+
+        if isinstance(first_dataset, CsvDataSet):
+            self.dataset = CsvDataSet(
+                output_path_strs,
+                schema=getattr(first_dataset, "schema", None) or OrderedDict(),
+                delim=getattr(first_dataset, "delim", ","),
+                max_line_size=getattr(first_dataset, "max_line_size", None),
+                parallel=getattr(first_dataset, "parallel", True),
+                header=getattr(first_dataset, "header", False),
+                columns=getattr(first_dataset, "columns", None),
+                union_by_name=any(getattr(d, "union_by_name", False) for d in all_input_datasets),
+            )
+        elif isinstance(first_dataset, JsonDataSet):
+            self.dataset = JsonDataSet(
+                output_path_strs,
+                schema=getattr(first_dataset, "schema", None),
+                format=getattr(first_dataset, "format", "newline_delimited"),
+                max_object_size=getattr(first_dataset, "max_object_size", 1 * GB),
+                columns=getattr(first_dataset, "columns", None),
+                union_by_name=any(getattr(d, "union_by_name", False) for d in all_input_datasets),
+            )
+        elif isinstance(first_dataset, ParquetDataSet):
+            self.dataset = ParquetDataSet(
+                output_path_strs,
+                columns=getattr(first_dataset, "columns", None),
+                generated_columns=getattr(first_dataset, "generated_columns", None),
+                union_by_name=any(getattr(d, "union_by_name", False) for d in all_input_datasets),
+            )
+            if any(getattr(d, "_resolved_row_ranges", None) is not None for d in all_input_datasets):
+                path_map = {str(src): str(dst) for src, dst in zip(src_paths, output_paths)}
+                resolved_row_ranges = []
+                for d in all_input_datasets:
+                    if getattr(d, "_resolved_row_ranges", None) is not None:
+                        for rr in d.resolved_row_ranges:
+                            mapped_rr = copy.copy(rr)
+                            mapped_rr.path = path_map.get(rr.path, rr.path)
+                            resolved_row_ranges.append(mapped_rr)
+                if resolved_row_ranges:
+                    self.dataset._resolved_row_ranges = resolved_row_ranges
+        else:
+            first_ext = output_paths[0].suffix.lower() if output_paths else ""
+            if first_ext in (".csv", ".tsv"):
+                delim = "\t" if first_ext == ".tsv" else ","
+                self.dataset = CsvDataSet(output_path_strs, schema=OrderedDict(), delim=delim)
+            elif first_ext in (".json", ".jsonl"):
+                self.dataset = JsonDataSet(output_path_strs)
+            else:
+                self.dataset = ParquetDataSet(output_path_strs)
 
         def copy_file(src_path: Path, dst_path: Path):
             # XXX: DO NOT use shutil.{copy, copy2, copyfileobj}

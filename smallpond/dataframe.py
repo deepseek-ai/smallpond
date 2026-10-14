@@ -654,8 +654,11 @@ class DataFrame:
         This operation will trigger execution of the lazy transformations performed on this DataFrame.
         """
         datasets = self._compute()
+        if not datasets:
+            return pd.DataFrame()
         with ThreadPoolExecutor() as pool:
-            return pd.concat(pool.map(lambda dataset: dataset.to_pandas(), datasets))
+            dfs = list(pool.map(lambda dataset: dataset.to_pandas(), datasets))
+            return pd.concat(dfs) if dfs else pd.DataFrame()
 
     def to_arrow(self) -> arrow.Table:
         """
@@ -664,5 +667,8 @@ class DataFrame:
         This operation will trigger execution of the lazy transformations performed on this DataFrame.
         """
         datasets = self._compute()
+        if not datasets:
+            return arrow.table({})
         with ThreadPoolExecutor() as pool:
-            return arrow.concat_tables(pool.map(lambda dataset: dataset.to_arrow_table(), datasets))
+            tables = list(pool.map(lambda dataset: dataset.to_arrow_table(), datasets))
+            return arrow.concat_tables(tables) if tables else arrow.table({})

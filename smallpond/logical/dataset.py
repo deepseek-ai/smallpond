@@ -948,7 +948,10 @@ class ArrowTableDataSet(DataSet):
         conn: duckdb.DuckDBPyConnection = None,
     ) -> str:
         name = f"arrow_table_{id(self.table)}"
-        self.table.to_pandas().to_sql(name, conn, index=False)
+        if conn is not None:
+            conn.register(name, self.table)
+        else:
+            duckdb.register(name, self.table)
         return f"( select * from {name} )"
 
 
@@ -986,5 +989,9 @@ class PandasDataSet(DataSet):
         conn: duckdb.DuckDBPyConnection = None,
     ) -> str:
         name = f"pandas_table_{id(self.df)}"
-        self.df.to_sql(name, conn, index=False)
+        table = self.to_arrow_table()
+        if conn is not None:
+            conn.register(name, table)
+        else:
+            duckdb.register(name, table)
         return f"( select * from {name} )"
